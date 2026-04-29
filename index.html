@@ -1,0 +1,636 @@
+<!--
+  A Cup of Ambition — Beslisboom: Ben ik klaar om betaald spreker te worden?
+  ==========================================================================
+  Drop this entire block into a Squarespace Code Block on a new page
+  (e.g. acupofambition.nl/beslisboom). It is fully self-contained: HTML, CSS
+  and JS in one file, no external dependencies.
+
+  TO GO LIVE — one thing to fill in:
+  ----------------------------------
+  Replace FORM_ENDPOINT below with a Formspree (or Mailchimp / ConvertKit)
+  endpoint. With Formspree:
+    1. Sign up at https://formspree.io (free tier is fine to start)
+    2. Create a new form -> copy the endpoint, e.g.  https://formspree.io/f/abcdwxyz
+    3. Paste it as the value of FORM_ENDPOINT
+  Each submission is then forwarded to Britt's inbox AND the user sees their
+  result on screen. The "outcome" tag (klaar / werk-aan-de-winkel /
+  nog-niet-klaar) is included so the addresses can be segmented later.
+-->
+<div id="beslisboom-root"></div>
+
+<style>
+  #beslisboom-root {
+    --acoa-bg: #fdf8f4;
+    --acoa-card: #ffffff;
+    --acoa-ink: #1f1a17;
+    --acoa-muted: #6b6259;
+    --acoa-accent: #e94e77;        /* coral pink */
+    --acoa-accent-dark: #c93862;
+    --acoa-soft: #fde6ec;
+    --acoa-yes: #2f9e6b;
+    --acoa-no: #c44a4a;
+    --acoa-maybe: #c98a2b;
+    --acoa-border: #ebe2da;
+    --acoa-shadow: 0 10px 40px rgba(31, 26, 23, 0.08);
+    --acoa-radius: 18px;
+
+    box-sizing: border-box;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--acoa-ink);
+    line-height: 1.5;
+  }
+  #beslisboom-root *,
+  #beslisboom-root *::before,
+  #beslisboom-root *::after { box-sizing: border-box; }
+
+  .bb-progress {
+    height: 6px;
+    background: var(--acoa-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .bb-progress__bar {
+    height: 100%;
+    width: 0%;
+    background: var(--acoa-accent);
+    transition: width 360ms cubic-bezier(.2,.7,.2,1);
+  }
+
+  .bb-card {
+    background: var(--acoa-card);
+    border: 1px solid var(--acoa-border);
+    border-radius: var(--acoa-radius);
+    box-shadow: var(--acoa-shadow);
+    padding: 32px 24px;
+    animation: bbFade 320ms ease both;
+  }
+  @keyframes bbFade {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bb-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--acoa-accent);
+    margin-bottom: 12px;
+  }
+  .bb-question {
+    font-size: clamp(20px, 3.4vw, 26px);
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0 0 8px;
+  }
+  .bb-helper {
+    color: var(--acoa-muted);
+    font-size: 15px;
+    margin: 0 0 24px;
+  }
+
+  .bb-answers {
+    display: grid;
+    gap: 12px;
+  }
+  .bb-answer {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #fff;
+    border: 1.5px solid var(--acoa-border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    text-align: left;
+    font: inherit;
+    font-weight: 600;
+    color: var(--acoa-ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+  .bb-answer:hover, .bb-answer:focus-visible {
+    outline: none;
+    border-color: var(--acoa-accent);
+    transform: translateY(-1px);
+    background: #fffafc;
+  }
+  .bb-answer__dot {
+    width: 12px; height: 12px; border-radius: 999px; flex: 0 0 12px;
+  }
+  .bb-answer[data-tone="yes"] .bb-answer__dot { background: var(--acoa-yes); }
+  .bb-answer[data-tone="no"] .bb-answer__dot { background: var(--acoa-no); }
+  .bb-answer[data-tone="maybe"] .bb-answer__dot { background: var(--acoa-maybe); }
+
+  .bb-back {
+    appearance: none;
+    background: none;
+    border: 0;
+    color: var(--acoa-muted);
+    font: inherit;
+    font-size: 14px;
+    margin-top: 18px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .bb-back:hover { color: var(--acoa-accent); }
+
+  /* ---------- Email gate ---------- */
+  .bb-gate__title {
+    font-size: clamp(22px, 3.6vw, 28px);
+    margin: 0 0 8px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .bb-gate__intro {
+    color: var(--acoa-muted);
+    margin: 0 0 24px;
+    font-size: 15px;
+  }
+  .bb-field {
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+  }
+  .bb-field label {
+    font-size: 13px; font-weight: 600; color: var(--acoa-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .bb-field input {
+    font: inherit; font-size: 16px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--acoa-border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--acoa-ink);
+    transition: border-color 120ms ease;
+  }
+  .bb-field input:focus {
+    outline: none; border-color: var(--acoa-accent);
+  }
+  .bb-consent {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13px; color: var(--acoa-muted); margin: 4px 0 20px;
+  }
+  .bb-consent input { margin-top: 3px; flex: 0 0 auto; }
+
+  .bb-submit {
+    width: 100%;
+    appearance: none;
+    background: var(--acoa-accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    font-size: 16px;
+    border: 0;
+    border-radius: 12px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease;
+  }
+  .bb-submit:hover { background: var(--acoa-accent-dark); }
+  .bb-submit:disabled { opacity: 0.6; cursor: wait; }
+  .bb-error {
+    color: var(--acoa-no); font-size: 14px; margin-top: 10px; min-height: 1em;
+  }
+
+  /* ---------- Result ---------- */
+  .bb-result__badge {
+    display: inline-block;
+    background: var(--acoa-soft);
+    color: var(--acoa-accent-dark);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 16px;
+  }
+  .bb-result__title {
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.1;
+    margin: 0 0 18px;
+    font-weight: 800;
+  }
+  .bb-result__body p { margin: 0 0 14px; color: #2c2620; }
+  .bb-result__body strong { color: var(--acoa-ink); }
+  .bb-result__cta {
+    display: inline-block;
+    background: var(--acoa-accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-weight: 700;
+    margin-top: 18px;
+    margin-right: 8px;
+    transition: background 120ms ease;
+  }
+  .bb-result__cta:hover { background: var(--acoa-accent-dark); }
+  .bb-result__cta--ghost {
+    background: transparent;
+    color: var(--acoa-accent-dark);
+    border: 1.5px solid var(--acoa-accent);
+  }
+  .bb-result__cta--ghost:hover {
+    background: var(--acoa-soft);
+  }
+  .bb-result__list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    color: #2c2620;
+  }
+  .bb-result__list li { margin-bottom: 8px; }
+  .bb-restart {
+    display: block;
+    margin-top: 28px;
+    background: none; border: 0;
+    color: var(--acoa-muted);
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+  }
+
+  @media (max-width: 480px) {
+    .bb-card { padding: 26px 18px; }
+  }
+</style>
+
+<script>
+(function () {
+  // ====================================================================
+  // CONFIG — replace with your own form endpoint before going live
+  // ====================================================================
+  var FORM_ENDPOINT = 'https://formspree.io/f/REPLACE_ME';
+  // If you'd rather skip the email step entirely, set this to false:
+  var REQUIRE_EMAIL = true;
+
+  // ====================================================================
+  // Decision tree
+  // ====================================================================
+  // Each node is a question. Answers route to another nodeId or "result:<id>".
+  var TREE = {
+    start: 'q1',
+    nodes: {
+      q1: {
+        question: 'Heb je inzichten of ervaringen die waardevol zijn voor publiek?',
+        helper: 'Denk aan kennis, ervaringen of een visie waar anderen iets aan hebben.',
+        answers: [
+          { label: 'Ja',                  tone: 'yes',   next: 'q2' },
+          { label: 'Dat weet ik niet zeker', tone: 'maybe', next: 'q_explore' }
+        ]
+      },
+      q2: {
+        question: 'Is er vraag naar jouw onderwerp?',
+        helper: 'Wordt er door bedrijven, events of organisaties actief naar dit thema gezocht?',
+        answers: [
+          { label: 'Ja',                  tone: 'yes',   next: 'q3' },
+          { label: 'Dat weet ik niet zeker', tone: 'maybe', next: 'q_explore' }
+        ]
+      },
+      q3: {
+        question: 'Heb je een keynote of presentatie uitgewerkt?',
+        helper: 'Een verhaal met een duidelijke opbouw, kernboodschap en take-aways.',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q4' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q4: {
+        question: 'Kun je dit met plezier en zelfvertrouwen overbrengen?',
+        helper: 'Sta je krachtig op het podium en geniet je van het moment?',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q5' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q5: {
+        question: 'Heb je ervaring op het podium en bewijs van waarde?',
+        helper: 'Testimonials, beeldmateriaal van eerdere keynotes of betaalde optredens.',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q6' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q6: {
+        question: 'Ben je zichtbaar en vindbaar als spreker?',
+        helper: 'En ben je consistent bereid om hierin te blijven investeren?',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'result:ready' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q_explore: {
+        question: 'Ben je bereid om te onderzoeken wat jouw unieke verhaal is?',
+        helper: 'We hebben allemaal waardevolle kennis waar we anderen mee vooruit kunnen helpen — vaak is het alleen nog niet scherp.',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q_invest' },
+          { label: 'Nee', tone: 'no',  next: 'result:not_ready' }
+        ]
+      },
+      q_invest: {
+        question: 'Ben je bereid om hierin te investeren?',
+        helper: 'In tijd, in jezelf, en eventueel in begeleiding om de stap te zetten.',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'result:work' },
+          { label: 'Nee', tone: 'no',  next: 'result:not_ready' }
+        ]
+      }
+    }
+  };
+
+  var RESULTS = {
+    ready: {
+      tag: 'klaar',
+      badge: 'Goed nieuws',
+      title: 'Je bent er klaar voor! 🎤',
+      body: [
+        'Jouw verhaal staat, je staat met plezier op het podium en je investeert consistent in je zichtbaarheid. Tijd om jezelf neer te zetten als <strong>betaald spreker</strong>.',
+        'Meld je aan op ons platform <strong>vrouwelijkespreker.nu</strong> — voor €199,- per jaar ben jij vindbaar als betaald spreker.'
+      ],
+      ctas: [
+        { label: 'Aanmelden bij vrouwelijkespreker.nu', href: 'https://vrouwelijkespreker.nu', primary: true },
+        { label: 'Terug naar A Cup of Ambition',         href: 'https://www.acupofambition.nl', primary: false }
+      ]
+    },
+    work: {
+      tag: 'werk-aan-de-winkel',
+      badge: 'Bijna zover',
+      title: "Let's go — er is werk aan de winkel.",
+      body: [
+        '<strong>MORE WOMEN ON STAGE</strong> bereiken we niet zomaar. Jij hebt de motivatie en ambitie om hier serieus mee aan de slag te gaan — werk aan je verhaal, je sprekersvaardigheden en je positionering.',
+        'Wij van A Cup of Ambition helpen je graag verder:'
+      ],
+      list: [
+        '<strong>Sprekersopleiding</strong> — werk aan jouw sprekerskills en zelfvertrouwen, of ontdek waar jouw unieke verhaal zit.',
+        '<strong>LEVEL UP traject</strong> — leer alle facetten om de stap naar betaald spreker te maken.',
+        '<strong>1:1 keynote bouwen</strong> — samen aan jouw killer keynote, voor een écht goed verhaal.'
+      ],
+      ctas: [
+        { label: 'Bekijk de opleidingen', href: 'https://www.acupofambition.nl', primary: true }
+      ]
+    },
+    not_ready: {
+      tag: 'nog-niet-klaar',
+      badge: 'Nog even geduld',
+      title: 'Je bent er nog niet klaar voor.',
+      body: [
+        'Betaald spreker word je niet zomaar. Spreken en presenteren is een vak — professionele sprekers stoppen hun ziel en zaligheid in hun keynotes. Dat vergt tijd, zichtbaarheid, focus op je positionering en regelmatige trainingen om jezelf te blijven ontwikkelen.',
+        'Mocht je later toch de stap willen zetten: wij staan klaar om je daarbij te helpen.'
+      ],
+      ctas: [
+        { label: 'Ontdek A Cup of Ambition', href: 'https://www.acupofambition.nl', primary: true }
+      ]
+    }
+  };
+
+  // ====================================================================
+  // State + render
+  // ====================================================================
+  var root = document.getElementById('beslisboom-root');
+  var state = {
+    history: [],          // array of { nodeId, answerLabel }
+    currentNodeId: TREE.start,
+    pendingResult: null,  // result key once tree is finished, before email
+    finalResult: null     // shown after email submitted (or skipped)
+  };
+
+  function totalDepth() {
+    // approximate progress: longest path is ~7 (q1→q2→q3→q4→q5→q6→done)
+    return 7;
+  }
+
+  function progressPct() {
+    if (state.finalResult) return 100;
+    if (state.pendingResult) return 95;
+    return Math.min(90, (state.history.length / totalDepth()) * 90);
+  }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') node.className = attrs[k];
+      else if (k === 'html') node.innerHTML = attrs[k];
+      else if (k.indexOf('on') === 0) node.addEventListener(k.slice(2), attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) {
+      if (c == null) return;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  function render() {
+    root.innerHTML = '';
+
+    var progress = el('div', { class: 'bb-progress' }, [
+      el('div', { class: 'bb-progress__bar', style: 'width:' + progressPct() + '%' })
+    ]);
+    root.appendChild(progress);
+
+    var card = el('div', { class: 'bb-card' });
+    if (state.finalResult)        renderResult(card, state.finalResult);
+    else if (state.pendingResult) renderEmailGate(card);
+    else                          renderQuestion(card);
+    root.appendChild(card);
+  }
+
+  function renderQuestion(card) {
+    var node = TREE.nodes[state.currentNodeId];
+    var stepNum = state.history.length + 1;
+
+    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Vraag ' + stepNum]));
+    card.appendChild(el('h2', { class: 'bb-question' }, [node.question]));
+    if (node.helper) card.appendChild(el('p', { class: 'bb-helper' }, [node.helper]));
+
+    var answers = el('div', { class: 'bb-answers' });
+    node.answers.forEach(function (a) {
+      var btn = el('button', {
+        class: 'bb-answer',
+        type: 'button',
+        'data-tone': a.tone,
+        onclick: function () { choose(a); }
+      }, [
+        el('span', { class: 'bb-answer__dot' }),
+        el('span', null, [a.label])
+      ]);
+      answers.appendChild(btn);
+    });
+    card.appendChild(answers);
+
+    if (state.history.length > 0) {
+      card.appendChild(el('button', {
+        class: 'bb-back',
+        type: 'button',
+        onclick: goBack
+      }, ['← Vorige vraag']));
+    }
+  }
+
+  function renderEmailGate(card) {
+    if (!REQUIRE_EMAIL) {
+      // Skip the email step entirely
+      state.finalResult = state.pendingResult;
+      state.pendingResult = null;
+      render();
+      return;
+    }
+
+    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Bijna klaar']));
+    card.appendChild(el('h2', { class: 'bb-gate__title' }, ['Waar mogen we jouw uitslag naartoe sturen?']));
+    card.appendChild(el('p', { class: 'bb-gate__intro' }, [
+      'Vul je naam en e-mailadres in — je krijgt direct je persoonlijke uitkomst te zien én een mailtje met passende vervolgstappen van A Cup of Ambition.'
+    ]));
+
+    var form = el('form', { class: 'bb-form', onsubmit: function (e) { e.preventDefault(); submit(form); } });
+
+    var nameField = el('div', { class: 'bb-field' }, [
+      el('label', { for: 'bb-name' }, ['Naam']),
+      el('input', { type: 'text', id: 'bb-name', name: 'name', required: 'required', autocomplete: 'name', placeholder: 'Jouw naam' })
+    ]);
+    var emailField = el('div', { class: 'bb-field' }, [
+      el('label', { for: 'bb-email' }, ['E-mailadres']),
+      el('input', { type: 'email', id: 'bb-email', name: 'email', required: 'required', autocomplete: 'email', placeholder: 'jij@voorbeeld.nl' })
+    ]);
+
+    var consent = el('label', { class: 'bb-consent' }, [
+      el('input', { type: 'checkbox', id: 'bb-consent', name: 'consent', required: 'required' }),
+      el('span', null, ['Ja, ik ontvang graag inspiratie en aanbiedingen van A Cup of Ambition. Afmelden kan altijd.'])
+    ]);
+
+    var submitBtn = el('button', { class: 'bb-submit', type: 'submit' }, ['Toon mijn uitslag']);
+    var error = el('div', { class: 'bb-error', id: 'bb-error' });
+
+    form.appendChild(nameField);
+    form.appendChild(emailField);
+    form.appendChild(consent);
+    form.appendChild(submitBtn);
+    form.appendChild(error);
+    card.appendChild(form);
+
+    card.appendChild(el('button', {
+      class: 'bb-back',
+      type: 'button',
+      onclick: function () {
+        // step back into the last question
+        var last = state.history.pop();
+        if (last) {
+          state.currentNodeId = last.nodeId;
+          state.pendingResult = null;
+          render();
+        }
+      }
+    }, ['← Vorige vraag']));
+  }
+
+  function renderResult(card, key) {
+    var r = RESULTS[key];
+    card.appendChild(el('div', { class: 'bb-result__badge' }, [r.badge]));
+    card.appendChild(el('h2', { class: 'bb-result__title' }, [r.title]));
+    var body = el('div', { class: 'bb-result__body' });
+    r.body.forEach(function (p) {
+      body.appendChild(el('p', { html: p }));
+    });
+    if (r.list) {
+      var ul = el('ul', { class: 'bb-result__list' });
+      r.list.forEach(function (li) { ul.appendChild(el('li', { html: li })); });
+      body.appendChild(ul);
+    }
+    card.appendChild(body);
+
+    r.ctas.forEach(function (cta) {
+      card.appendChild(el('a', {
+        class: 'bb-result__cta' + (cta.primary ? '' : ' bb-result__cta--ghost'),
+        href: cta.href,
+        target: '_blank',
+        rel: 'noopener'
+      }, [cta.label]));
+    });
+
+    card.appendChild(el('button', {
+      class: 'bb-restart',
+      type: 'button',
+      onclick: restart
+    }, ['Opnieuw beginnen']));
+  }
+
+  // ====================================================================
+  // Actions
+  // ====================================================================
+  function choose(answer) {
+    state.history.push({ nodeId: state.currentNodeId, answerLabel: answer.label });
+    if (typeof answer.next === 'string' && answer.next.indexOf('result:') === 0) {
+      state.pendingResult = answer.next.split(':')[1];
+    } else {
+      state.currentNodeId = answer.next;
+    }
+    render();
+  }
+
+  function goBack() {
+    var last = state.history.pop();
+    if (!last) return;
+    state.currentNodeId = last.nodeId;
+    state.pendingResult = null;
+    render();
+  }
+
+  function restart() {
+    state.history = [];
+    state.currentNodeId = TREE.start;
+    state.pendingResult = null;
+    state.finalResult = null;
+    render();
+  }
+
+  function submit(form) {
+    var btn = form.querySelector('.bb-submit');
+    var err = form.querySelector('#bb-error');
+    err.textContent = '';
+
+    var data = new FormData(form);
+    data.append('outcome', state.pendingResult);
+    data.append('outcome_tag', RESULTS[state.pendingResult].tag);
+    data.append('answers', JSON.stringify(state.history));
+    data.append('source', 'beslisboom-acupofambition');
+
+    btn.disabled = true;
+    btn.textContent = 'Bezig...';
+
+    var endpoint = FORM_ENDPOINT;
+    if (!endpoint || endpoint.indexOf('REPLACE_ME') !== -1) {
+      // Endpoint not configured yet — show the result anyway so the widget
+      // is testable, but log a console warning for the site owner.
+      console.warn('[beslisboom] FORM_ENDPOINT is not configured — submission was NOT sent.');
+      state.finalResult = state.pendingResult;
+      state.pendingResult = null;
+      render();
+      return;
+    }
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: data
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      state.finalResult = state.pendingResult;
+      state.pendingResult = null;
+      render();
+    }).catch(function (e) {
+      console.error('[beslisboom] submit failed', e);
+      btn.disabled = false;
+      btn.textContent = 'Toon mijn uitslag';
+      err.textContent = 'Er ging iets mis. Probeer het nog eens of mail ons direct.';
+    });
+  }
+
+  render();
+})();
+</script>
