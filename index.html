@@ -622,27 +622,6 @@
       }
     }, ['Doe de test!']));
 
-    wrap.appendChild(el('p', { class: 'bb-intro__hi' },
-      ['Hi, wij zijn Annick & Britt van A Cup of Ambition.']
-    ));
-
-    var body = el('div', { class: 'bb-intro__body' });
-    body.appendChild(el('p', null, [
-      'Onze missie? ',
-      el('strong', null, ['MORE WOMEN ON STAGE.']),
-      ' Meer representatie, op welk podium dan ook.'
-    ]));
-    body.appendChild(el('p', null, [
-      'Het is een feit dat vrouwen zichzelf structureel minder promoten dan mannen. En dat terwijl zichtbaarheid en zelfpromotie cruciaal zijn voor ondernemerssucces en carrièrekansen.'
-    ]));
-    body.appendChild(el('p', null, [
-      'Wij helpen je om jezelf zichtbaar te maken, ruimte in te nemen, te laten zien wie je bent én wat je te vertellen hebt. We leren je niet om kleiner te doen. We leren je om zichtbaar te zijn, je stem te gebruiken en zonder excuses de spotlight te pakken.'
-    ]));
-    body.appendChild(el('p', null, [
-      'Want als jij je verhaal niet vertelt, dan doet niemand dat voor je.'
-    ]));
-    wrap.appendChild(body);
-
     root.appendChild(wrap);
   }
 
@@ -791,7 +770,7 @@
       lead: match.lead,
       ctas: [
         { label: match.label, href: match.href, primary: true },
-        { label: 'Alle opleidingen bekijken', href: 'https://www.acupofambition.nl', primary: false }
+        { label: 'Alle opleidingen bekijken', href: 'https://www.acupofambition.nl/alle-trainingen1', primary: false }
       ]
     };
   }
