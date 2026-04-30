@@ -317,7 +317,15 @@
     padding-left: 20px;
     color: #2c2620;
   }
-  .bb-result__list li { margin-bottom: 8px; }
+  .bb-result__list li { margin-bottom: 12px; line-height: 1.55; }
+  .bb-result__list a {
+    color: var(--acoa-accent);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1.5px solid var(--acoa-soft);
+    transition: border-color 120ms ease;
+  }
+  .bb-result__list a:hover { border-bottom-color: var(--acoa-accent); }
   .bb-result__lead {
     background: var(--acoa-soft);
     border-left: 3px solid var(--acoa-gold);
@@ -468,10 +476,16 @@
       badge: 'Bijna zover',
       title: "Let's go — er is werk aan de winkel.",
       body: [
-        '<strong>MORE WOMEN ON STAGE</strong> bereiken we niet zomaar. Jij hebt de motivatie en ambitie om hier serieus mee aan de slag te gaan — werk aan je verhaal, je sprekersvaardigheden en je positionering.'
+        'Jij hebt de motivatie en ambitie om serieus met je sprekersskills en positionering aan de slag te gaan. Dat is super, want <strong>MORE WOMEN ON STAGE</strong> bereiken we niet zomaar.',
+        'Wij van A Cup of Ambition helpen je graag verder. Samen met ons werk je aan je verhaal, je sprekersvaardigheden en je positionering. Dat kan via onderstaande mogelijkheden:'
+      ],
+      list: [
+        '<strong>Doe mee met de Sprekersopleiding</strong> — hier werk je aan jouw sprekerskills en zelfvertrouwen én je ontdekt waar jouw unieke verhaal zit. We starten binnenkort weer. <a href="https://www.acupofambition.nl/opleiding" target="_blank" rel="noopener">Meer info →</a>',
+        '<strong>In het LEVEL UP traject</strong> leren wij je alle facetten die nodig zijn om de stap naar betaald spreker te maken. Van positionering op LinkedIn tot vaker in de media komen. <a href="https://www.acupofambition.nl/alle-trainingen1" target="_blank" rel="noopener">Meer info →</a>',
+        '<strong>Of schakel ons in voor een 1:1 coachtraject</strong> om samen jouw keynote te ontwikkelen én verkoopklaar te maken — bouw met ons je killer keynote. <a href="https://www.acupofambition.nl/11-coaching" target="_blank" rel="noopener">Meer info →</a>'
       ],
       // CTAs are dynamically tailored based on the first "gap" in the user's
-      // answers — see buildWorkCtas() below. Falls back to a generic CTA.
+      // answers — see buildTailoredCtas() below. Falls back to a generic CTA.
       ctas: [
         { label: 'Bekijk de opleidingen', href: 'https://www.acupofambition.nl', primary: true }
       ]
@@ -715,25 +729,25 @@
   var GAP_CTAS = {
     q1: { lead: 'Jouw eerste stap: ontdekken wat jouw unieke verhaal is.',
           label: 'Bekijk de Sprekersopleiding',
-          href:  'https://www.acupofambition.nl/sprekersopleiding' },
+          href:  'https://www.acupofambition.nl/opleiding' },
     q2: { lead: 'Jouw eerste stap: scherp krijgen of er vraag is naar jouw onderwerp en hoe je je positioneert.',
           label: 'Bekijk de Sprekersopleiding',
-          href:  'https://www.acupofambition.nl/sprekersopleiding' },
+          href:  'https://www.acupofambition.nl/opleiding' },
     q3: { lead: 'Jouw eerste stap: een keynote bouwen waar je trots op bent.',
           label: 'Bouw 1:1 jouw killer keynote',
-          href:  'https://www.acupofambition.nl/keynote' },
+          href:  'https://www.acupofambition.nl/11-coaching' },
     q4: { lead: 'Jouw eerste stap: zelfvertrouwen en plezier op het podium opbouwen.',
           label: 'Bekijk de Sprekersopleiding',
-          href:  'https://www.acupofambition.nl/sprekersopleiding' },
+          href:  'https://www.acupofambition.nl/opleiding' },
     q5: { lead: 'Jouw eerste stap: ervaring opdoen en bewijs van waarde verzamelen.',
           label: 'Bekijk het LEVEL UP traject',
-          href:  'https://www.acupofambition.nl/level-up' },
+          href:  'https://www.acupofambition.nl/alle-trainingen1' },
     q6: { lead: 'Jouw eerste stap: consistent zichtbaar worden als spreker.',
           label: 'Bekijk het LEVEL UP traject',
-          href:  'https://www.acupofambition.nl/level-up' },
+          href:  'https://www.acupofambition.nl/alle-trainingen1' },
     q_explore: { lead: 'Jouw eerste stap: onderzoeken wat jouw unieke verhaal is.',
           label: 'Bekijk de Sprekersopleiding',
-          href:  'https://www.acupofambition.nl/sprekersopleiding' }
+          href:  'https://www.acupofambition.nl/opleiding' }
   };
 
   function buildTailoredCtas() {
