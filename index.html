@@ -22,29 +22,37 @@
   #beslisboom-root {
     --acoa-bg: #fdf8f4;
     --acoa-card: #ffffff;
-    --acoa-ink: #1f1a17;
-    --acoa-muted: #6b6259;
-    --acoa-accent: #e94e77;        /* coral pink */
-    --acoa-accent-dark: #c93862;
-    --acoa-soft: #fde6ec;
-    --acoa-yes: #2f9e6b;
-    --acoa-no: #c44a4a;
-    --acoa-maybe: #c98a2b;
-    --acoa-border: #ebe2da;
-    --acoa-shadow: 0 10px 40px rgba(31, 26, 23, 0.08);
+    --acoa-ink: #2a1411;
+    --acoa-muted: #7a6660;
+    --acoa-accent: #5c1f1a;          /* deep burgundy from logo */
+    --acoa-accent-dark: #3f120e;
+    --acoa-gold: #c8923b;             /* mustard "of" from logo */
+    --acoa-rose: #b89691;             /* dusty rose "cup" from logo */
+    --acoa-soft: #f5e8e4;
+    --acoa-border: #ebe0d8;
+    --acoa-shadow: 0 10px 40px rgba(42, 20, 17, 0.08);
     --acoa-radius: 18px;
 
     box-sizing: border-box;
     max-width: 760px;
     margin: 0 auto;
-    padding: 24px 16px 64px;
+    padding: 24px 18px 64px;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: var(--acoa-ink);
-    line-height: 1.5;
+    line-height: 1.55;
+    font-size: 17px;
   }
   #beslisboom-root *,
   #beslisboom-root *::before,
   #beslisboom-root *::after { box-sizing: border-box; }
+
+  .bb-logo {
+    display: block;
+    max-width: 220px;
+    width: 60%;
+    height: auto;
+    margin: 0 auto 28px;
+  }
 
   .bb-progress {
     height: 6px;
@@ -75,27 +83,28 @@
 
   .bb-eyebrow {
     text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-size: 12px;
+    letter-spacing: 0.16em;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--acoa-accent);
-    margin-bottom: 12px;
+    color: var(--acoa-gold);
+    margin-bottom: 14px;
   }
   .bb-question {
-    font-size: clamp(20px, 3.4vw, 26px);
+    font-size: clamp(22px, 4.4vw, 28px);
     font-weight: 700;
     line-height: 1.25;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
+    color: var(--acoa-accent);
   }
   .bb-helper {
     color: var(--acoa-muted);
-    font-size: 15px;
-    margin: 0 0 24px;
+    font-size: 17px;
+    margin: 0 0 28px;
   }
 
   .bb-answers {
     display: grid;
-    gap: 12px;
+    gap: 14px;
   }
   .bb-answer {
     appearance: none;
@@ -103,29 +112,22 @@
     background: #fff;
     border: 1.5px solid var(--acoa-border);
     border-radius: 14px;
-    padding: 16px 18px;
+    padding: 18px 20px;
     text-align: left;
     font: inherit;
+    font-size: 17px;
     font-weight: 600;
     color: var(--acoa-ink);
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
   }
   .bb-answer:hover, .bb-answer:focus-visible {
     outline: none;
     border-color: var(--acoa-accent);
+    color: var(--acoa-accent);
     transform: translateY(-1px);
-    background: #fffafc;
+    background: #fffaf7;
   }
-  .bb-answer__dot {
-    width: 12px; height: 12px; border-radius: 999px; flex: 0 0 12px;
-  }
-  .bb-answer[data-tone="yes"] .bb-answer__dot { background: var(--acoa-yes); }
-  .bb-answer[data-tone="no"] .bb-answer__dot { background: var(--acoa-no); }
-  .bb-answer[data-tone="maybe"] .bb-answer__dot { background: var(--acoa-maybe); }
 
   .bb-back {
     appearance: none;
@@ -160,8 +162,8 @@
     text-transform: uppercase; letter-spacing: 0.08em;
   }
   .bb-field input {
-    font: inherit; font-size: 16px;
-    padding: 14px 16px;
+    font: inherit; font-size: 17px;
+    padding: 15px 16px;
     border: 1.5px solid var(--acoa-border);
     border-radius: 12px;
     background: #fff;
@@ -173,9 +175,10 @@
   }
   .bb-consent {
     display: flex; gap: 10px; align-items: flex-start;
-    font-size: 13px; color: var(--acoa-muted); margin: 4px 0 20px;
+    font-size: 15px; color: var(--acoa-muted); margin: 4px 0 22px;
+    line-height: 1.45;
   }
-  .bb-consent input { margin-top: 3px; flex: 0 0 auto; }
+  .bb-consent input { margin-top: 4px; flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--acoa-accent); }
 
   .bb-submit {
     width: 100%;
@@ -257,7 +260,15 @@
   }
 
   @media (max-width: 480px) {
-    .bb-card { padding: 26px 18px; }
+    #beslisboom-root { padding: 18px 14px 56px; font-size: 17px; }
+    .bb-card { padding: 26px 20px; }
+    .bb-logo { max-width: 180px; margin-bottom: 22px; }
+    .bb-question { font-size: 22px; }
+    .bb-helper { font-size: 16px; }
+    .bb-answer { font-size: 17px; padding: 18px 18px; }
+    .bb-result__title { font-size: 28px; }
+    .bb-gate__title { font-size: 22px; }
+    .bb-result__cta { display: block; text-align: center; margin: 12px 0 0; }
   }
 </style>
 
@@ -429,6 +440,12 @@
   function render() {
     root.innerHTML = '';
 
+    root.appendChild(el('img', {
+      class: 'bb-logo',
+      src: 'logo.jpg',
+      alt: 'A Cup of Ambition'
+    }));
+
     var progress = el('div', { class: 'bb-progress' }, [
       el('div', { class: 'bb-progress__bar', style: 'width:' + progressPct() + '%' })
     ]);
@@ -454,12 +471,8 @@
       var btn = el('button', {
         class: 'bb-answer',
         type: 'button',
-        'data-tone': a.tone,
         onclick: function () { choose(a); }
-      }, [
-        el('span', { class: 'bb-answer__dot' }),
-        el('span', null, [a.label])
-      ]);
+      }, [a.label]);
       answers.appendChild(btn);
     });
     card.appendChild(answers);
@@ -500,8 +513,8 @@
     ]);
 
     var consent = el('label', { class: 'bb-consent' }, [
-      el('input', { type: 'checkbox', id: 'bb-consent', name: 'consent', required: 'required' }),
-      el('span', null, ['Ja, ik ontvang graag inspiratie en aanbiedingen van A Cup of Ambition. Afmelden kan altijd.'])
+      el('input', { type: 'checkbox', id: 'bb-consent', name: 'newsletter_optin' }),
+      el('span', null, ['Ja, ik ontvang graag de nieuwsbrief van A Cup of Ambition met inspiratie en aanbiedingen. (Optioneel — afmelden kan altijd.)'])
     ]);
 
     var submitBtn = el('button', { class: 'bb-submit', type: 'submit' }, ['Toon mijn uitslag']);
