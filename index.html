@@ -883,9 +883,17 @@
     data.append('fullname', nameVal.trim());
     data.append('email', emailVal.trim());
     data.append(AC_OUTCOME_FIELD, outcomeTag);
-    // Send newsletter opt-in as a free-form field — AC will ignore it unless
-    // a matching custom field exists, but it's stored in the submission
-    // payload so Britt can later wire it up to a tag/automation.
+
+    // AC tag-list. Always include a generic source-tag, the outcome-tag
+    // (klaar / werk-aan-de-winkel / nog-niet-klaar), and "nieuwsbrief"
+    // when the user actively opted in. Britt's automations can trigger on
+    // any of these.
+    var tags = ['beslisboom-lead', outcomeTag];
+    if (newsletterChecked) tags.push('nieuwsbrief');
+    data.append('tags', tags.join(','));
+
+    // Keep the boolean opt-in as a free-form field too, in case Britt
+    // wants to wire it up to a custom field later.
     data.append('newsletter_optin', newsletterChecked ? 'yes' : 'no');
 
     // AC's proc.php doesn't return CORS headers, so we use no-cors mode.
