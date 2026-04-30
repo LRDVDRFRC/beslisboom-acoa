@@ -54,6 +54,66 @@
     margin: 0 auto 28px;
   }
 
+  /* ---------- Intro screen ---------- */
+  .bb-intro {
+    text-align: center;
+    animation: bbFade 320ms ease both;
+  }
+  .bb-intro__photo {
+    display: block;
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    border-radius: var(--acoa-radius);
+    margin: 0 auto 28px;
+    box-shadow: var(--acoa-shadow);
+  }
+  .bb-intro__hi {
+    font-size: clamp(20px, 3.4vw, 24px);
+    font-weight: 700;
+    color: var(--acoa-accent);
+    margin: 0 0 14px;
+  }
+  .bb-intro__body {
+    text-align: left;
+    color: #2c2620;
+    font-size: 17px;
+    line-height: 1.65;
+    max-width: 600px;
+    margin: 0 auto 28px;
+  }
+  .bb-intro__body p { margin: 0 0 14px; }
+  .bb-intro__body strong { color: var(--acoa-accent); }
+  .bb-intro__hook {
+    font-size: clamp(22px, 4vw, 28px);
+    font-weight: 800;
+    color: var(--acoa-accent);
+    margin: 8px 0 8px;
+    line-height: 1.2;
+  }
+  .bb-intro__sub {
+    color: var(--acoa-muted);
+    font-size: 17px;
+    margin: 0 0 28px;
+  }
+  .bb-intro__start {
+    appearance: none;
+    background: var(--acoa-accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    font-size: 18px;
+    border: 0;
+    border-radius: 12px;
+    padding: 18px 32px;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease;
+  }
+  .bb-intro__start:hover {
+    background: var(--acoa-accent-dark);
+    transform: translateY(-1px);
+  }
+
   .bb-progress {
     height: 6px;
     background: var(--acoa-soft);
@@ -269,6 +329,10 @@
     .bb-result__title { font-size: 28px; }
     .bb-gate__title { font-size: 22px; }
     .bb-result__cta { display: block; text-align: center; margin: 12px 0 0; }
+    .bb-intro__hi { font-size: 19px; }
+    .bb-intro__body { font-size: 16px; }
+    .bb-intro__hook { font-size: 22px; }
+    .bb-intro__start { width: 100%; padding: 18px 24px; font-size: 17px; }
   }
 </style>
 
@@ -405,6 +469,7 @@
   // ====================================================================
   var root = document.getElementById('beslisboom-root');
   var state = {
+    started: false,       // false = show intro screen
     history: [],          // array of { nodeId, answerLabel }
     currentNodeId: TREE.start,
     pendingResult: null,  // result key once tree is finished, before email
@@ -440,6 +505,11 @@
   function render() {
     root.innerHTML = '';
 
+    if (!state.started) {
+      renderIntro();
+      return;
+    }
+
     root.appendChild(el('img', {
       class: 'bb-logo',
       src: 'logo.jpg',
@@ -456,6 +526,57 @@
     else if (state.pendingResult) renderEmailGate(card);
     else                          renderQuestion(card);
     root.appendChild(card);
+  }
+
+  function renderIntro() {
+    var wrap = el('div', { class: 'bb-intro' });
+
+    wrap.appendChild(el('img', {
+      class: 'bb-intro__photo',
+      src: 'header.jpg',
+      alt: 'Annick en Britt — Team A Cup of Ambition'
+    }));
+
+    wrap.appendChild(el('p', { class: 'bb-intro__hi' },
+      ['Hi, wij zijn Annick & Britt van A Cup of Ambition.']
+    ));
+
+    var body = el('div', { class: 'bb-intro__body' });
+    body.appendChild(el('p', null, [
+      'Onze missie? ',
+      el('strong', null, ['MORE WOMEN ON STAGE.']),
+      ' Meer representatie, op welk podium dan ook.'
+    ]));
+    body.appendChild(el('p', null, [
+      'Het is een feit dat vrouwen zichzelf structureel minder promoten dan mannen. En dat terwijl zichtbaarheid en zelfpromotie cruciaal zijn voor ondernemerssucces en carrièrekansen.'
+    ]));
+    body.appendChild(el('p', null, [
+      'Wij helpen je om jezelf zichtbaar te maken, ruimte in te nemen, te laten zien wie je bent én wat je te vertellen hebt. We leren je niet om kleiner te doen. We leren je om zichtbaar te zijn, je stem te gebruiken en zonder excuses de spotlight te pakken.'
+    ]));
+    body.appendChild(el('p', null, [
+      'Want als jij je verhaal niet vertelt, dan doet niemand dat voor je.'
+    ]));
+    wrap.appendChild(body);
+
+    wrap.appendChild(el('p', { class: 'bb-intro__hook' },
+      ['MORE WOMEN ON STAGE, ook jij!']
+    ));
+    wrap.appendChild(el('p', { class: 'bb-intro__sub' },
+      ['Ben je er klaar voor?']
+    ));
+
+    wrap.appendChild(el('button', {
+      class: 'bb-intro__start',
+      type: 'button',
+      onclick: function () {
+        state.started = true;
+        render();
+        // scroll to top so the user starts with question 1 in view
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, ['Doe de test!']));
+
+    root.appendChild(wrap);
   }
 
   function renderQuestion(card) {
@@ -595,6 +716,7 @@
   }
 
   function restart() {
+    state.started = false;
     state.history = [];
     state.currentNodeId = TREE.start;
     state.pendingResult = null;
