@@ -2,19 +2,15 @@
   A Cup of Ambition — Beslisboom: Ben ik klaar om betaald spreker te worden?
   ==========================================================================
   Drop this entire block into a Squarespace Code Block on a new page
-  (e.g. acupofambition.nl/beslisboom). It is fully self-contained: HTML, CSS
-  and JS in one file, no external dependencies.
+  (e.g. acupofambition.nl/beslisboom), or embed via iframe from
+  https://lrdvdrfrc.github.io/beslisboom-acoa/. Fully self-contained.
 
-  TO GO LIVE — one thing to fill in:
-  ----------------------------------
-  Replace FORM_ENDPOINT below with a Formspree (or Mailchimp / ConvertKit)
-  endpoint. With Formspree:
-    1. Sign up at https://formspree.io (free tier is fine to start)
-    2. Create a new form -> copy the endpoint, e.g.  https://formspree.io/f/abcdwxyz
-    3. Paste it as the value of FORM_ENDPOINT
-  Each submission is then forwarded to Britt's inbox AND the user sees their
-  result on screen. The "outcome" tag (klaar / werk-aan-de-winkel /
-  nog-niet-klaar) is included so the addresses can be segmented later.
+  ActiveCampaign integration
+  --------------------------
+  Form-ID 49 on acupofambition.activehosted.com pushes contacts into Britt's
+  AC list with the outcome stored in custom field 184 ("Beslisboom Uitslag").
+  Hook an AC automation onto "Submits form" → branch on field[184] to send
+  the right follow-up mail.
 -->
 <div id="beslisboom-root"></div>
 
@@ -390,10 +386,23 @@
 <script>
 (function () {
   // ====================================================================
-  // CONFIG — replace with your own form endpoint before going live
+  // CONFIG — ActiveCampaign integration
   // ====================================================================
-  var FORM_ENDPOINT = 'https://formspree.io/f/REPLACE_ME';
-  // If you'd rather skip the email step entirely, set this to false:
+  // Form: "Beslisboom — Ben ik klaar om betaald spreker te worden?"
+  // Custom field: field[184] = Beslisboom Uitslag (klaar / werk-aan-de-winkel / nog-niet-klaar)
+  var AC_ENDPOINT = 'https://acupofambition.activehosted.com/proc.php?jsonp=true';
+  var AC_FORM = {
+    u: '49',
+    f: '49',
+    s: '',
+    c: '0',
+    m: '0',
+    act: 'sub',
+    v: '2',
+    or: '8c06a683-930f-4d72-8483-958921b8188b'
+  };
+  var AC_OUTCOME_FIELD = 'field[184]';
+  // Set to false to skip the email step entirely (debugging only):
   var REQUIRE_EMAIL = true;
 
   // ====================================================================
@@ -857,40 +866,46 @@
     var err = form.querySelector('#bb-error');
     err.textContent = '';
 
-    var data = new FormData(form);
-    data.append('outcome', state.pendingResult);
-    data.append('outcome_tag', RESULTS[state.pendingResult].tag);
-    data.append('answers', JSON.stringify(state.history));
-    data.append('source', 'beslisboom-acupofambition');
+    var nameVal  = (form.querySelector('#bb-name')  || {}).value || '';
+    var emailVal = (form.querySelector('#bb-email') || {}).value || '';
+    var newsletterChecked = !!(form.querySelector('#bb-consent') && form.querySelector('#bb-consent').checked);
+    var outcomeTag = RESULTS[state.pendingResult].tag;
 
     btn.disabled = true;
     btn.textContent = 'Bezig...';
 
-    var endpoint = FORM_ENDPOINT;
-    if (!endpoint || endpoint.indexOf('REPLACE_ME') !== -1) {
-      // Endpoint not configured yet — show the result anyway so the widget
-      // is testable, but log a console warning for the site owner.
-      console.warn('[beslisboom] FORM_ENDPOINT is not configured — submission was NOT sent.');
-      state.finalResult = state.pendingResult;
-      state.pendingResult = null;
-      render();
-      return;
-    }
+    // Build POST body for ActiveCampaign's proc.php endpoint.
+    // The hidden form fields (u, f, s, c, m, act, v, or) come straight from
+    // the AC-generated form snippet — they identify which form/list to
+    // attach the contact to.
+    var data = new FormData();
+    Object.keys(AC_FORM).forEach(function (k) { data.append(k, AC_FORM[k]); });
+    data.append('fullname', nameVal.trim());
+    data.append('email', emailVal.trim());
+    data.append(AC_OUTCOME_FIELD, outcomeTag);
+    // Send newsletter opt-in as a free-form field — AC will ignore it unless
+    // a matching custom field exists, but it's stored in the submission
+    // payload so Britt can later wire it up to a tag/automation.
+    data.append('newsletter_optin', newsletterChecked ? 'yes' : 'no');
 
-    fetch(endpoint, {
+    // AC's proc.php doesn't return CORS headers, so we use no-cors mode.
+    // Fire-and-forget: fetch resolves on network success regardless of
+    // response status. AC validates server-side; the user sees their
+    // outcome immediately. If the network itself fails (offline etc.),
+    // .catch fires and we surface a friendly error.
+    fetch(AC_ENDPOINT, {
       method: 'POST',
-      headers: { 'Accept': 'application/json' },
+      mode: 'no-cors',
       body: data
-    }).then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+    }).then(function () {
       state.finalResult = state.pendingResult;
       state.pendingResult = null;
       render();
     }).catch(function (e) {
-      console.error('[beslisboom] submit failed', e);
+      console.error('[beslisboom] AC submit failed', e);
       btn.disabled = false;
       btn.textContent = 'Toon mijn uitslag';
-      err.textContent = 'Er ging iets mis. Probeer het nog eens of mail ons direct.';
+      err.textContent = 'Er ging iets mis. Probeer het nog eens of mail ons direct via info@acupofambition.nl.';
     });
   }
 
