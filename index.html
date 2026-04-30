@@ -257,7 +257,14 @@
   .bb-submit:hover { background: var(--acoa-accent-dark); }
   .bb-submit:disabled { opacity: 0.6; cursor: wait; }
   .bb-error {
-    color: var(--acoa-no); font-size: 14px; margin-top: 10px; min-height: 1em;
+    color: #c44a4a; font-size: 14px; margin-top: 10px; min-height: 1em;
+  }
+  .bb-privacy {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--acoa-muted);
+    text-align: center;
+    line-height: 1.4;
   }
 
   /* ---------- Result ---------- */
@@ -308,6 +315,24 @@
     color: #2c2620;
   }
   .bb-result__list li { margin-bottom: 8px; }
+  .bb-result__lead {
+    background: var(--acoa-soft);
+    border-left: 3px solid var(--acoa-gold);
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin: 18px 0 4px;
+    font-size: 16px;
+  }
+  .bb-result__lead strong { color: var(--acoa-accent); }
+
+  .bb-confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    width: 100%;
+    height: 100%;
+  }
   .bb-restart {
     display: block;
     margin-top: 28px;
@@ -438,14 +463,10 @@
       badge: 'Bijna zover',
       title: "Let's go — er is werk aan de winkel.",
       body: [
-        '<strong>MORE WOMEN ON STAGE</strong> bereiken we niet zomaar. Jij hebt de motivatie en ambitie om hier serieus mee aan de slag te gaan — werk aan je verhaal, je sprekersvaardigheden en je positionering.',
-        'Wij van A Cup of Ambition helpen je graag verder:'
+        '<strong>MORE WOMEN ON STAGE</strong> bereiken we niet zomaar. Jij hebt de motivatie en ambitie om hier serieus mee aan de slag te gaan — werk aan je verhaal, je sprekersvaardigheden en je positionering.'
       ],
-      list: [
-        '<strong>Sprekersopleiding</strong> — werk aan jouw sprekerskills en zelfvertrouwen, of ontdek waar jouw unieke verhaal zit.',
-        '<strong>LEVEL UP traject</strong> — leer alle facetten om de stap naar betaald spreker te maken.',
-        '<strong>1:1 keynote bouwen</strong> — samen aan jouw killer keynote, voor een écht goed verhaal.'
-      ],
+      // CTAs are dynamically tailored based on the first "gap" in the user's
+      // answers — see buildWorkCtas() below. Falls back to a generic CTA.
       ctas: [
         { label: 'Bekijk de opleidingen', href: 'https://www.acupofambition.nl', primary: true }
       ]
@@ -579,11 +600,29 @@
     root.appendChild(wrap);
   }
 
+  function estimateRemainingFrom(nodeId) {
+    // Walk the "longest path" forward (first answer = the path that keeps asking).
+    var depth = 0;
+    var current = TREE.nodes[nodeId];
+    var seen = {};
+    while (current && !seen[current === TREE.nodes[nodeId] ? nodeId : '']) {
+      var nextStep = current.answers[0].next;
+      if (typeof nextStep !== 'string' || nextStep.indexOf('result:') === 0) break;
+      depth++;
+      if (depth > 10) break; // safety
+      current = TREE.nodes[nextStep];
+    }
+    return depth;
+  }
+
   function renderQuestion(card) {
     var node = TREE.nodes[state.currentNodeId];
     var stepNum = state.history.length + 1;
+    var estimatedTotal = stepNum + estimateRemainingFrom(state.currentNodeId);
 
-    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Vraag ' + stepNum]));
+    card.appendChild(el('div', { class: 'bb-eyebrow' },
+      ['Vraag ' + stepNum + ' van ' + estimatedTotal]
+    ));
     card.appendChild(el('h2', { class: 'bb-question' }, [node.question]));
     if (node.helper) card.appendChild(el('p', { class: 'bb-helper' }, [node.helper]));
 
@@ -616,10 +655,10 @@
       return;
     }
 
-    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Bijna klaar']));
-    card.appendChild(el('h2', { class: 'bb-gate__title' }, ['Waar mogen we jouw uitslag naartoe sturen?']));
+    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['✓ Jouw uitslag staat klaar']));
+    card.appendChild(el('h2', { class: 'bb-gate__title' }, ['Waar mogen we ’m naartoe sturen?']));
     card.appendChild(el('p', { class: 'bb-gate__intro' }, [
-      'Vul je naam en e-mailadres in — je krijgt direct je persoonlijke uitkomst te zien én een mailtje met passende vervolgstappen van A Cup of Ambition.'
+      'Vul je naam en e-mailadres in — je ziet direct je persoonlijke uitkomst én ontvangt een mailtje met passende vervolgstappen van A Cup of Ambition.'
     ]));
 
     var form = el('form', { class: 'bb-form', onsubmit: function (e) { e.preventDefault(); submit(form); } });
@@ -640,11 +679,15 @@
 
     var submitBtn = el('button', { class: 'bb-submit', type: 'submit' }, ['Toon mijn uitslag']);
     var error = el('div', { class: 'bb-error', id: 'bb-error' });
+    var privacy = el('p', { class: 'bb-privacy' }, [
+      '🔒 We sturen alleen jouw uitslag — geen spam, je e-mailadres blijft bij ons.'
+    ]);
 
     form.appendChild(nameField);
     form.appendChild(emailField);
     form.appendChild(consent);
     form.appendChild(submitBtn);
+    form.appendChild(privacy);
     form.appendChild(error);
     card.appendChild(form);
 
@@ -663,6 +706,50 @@
     }, ['← Vorige vraag']));
   }
 
+  // Map each "gap" question (where user said no/maybe) to the most relevant
+  // A Cup of Ambition service. First gap wins for the primary CTA.
+  var GAP_CTAS = {
+    q1: { lead: 'Jouw eerste stap: ontdekken wat jouw unieke verhaal is.',
+          label: 'Bekijk de Sprekersopleiding',
+          href:  'https://www.acupofambition.nl/sprekersopleiding' },
+    q2: { lead: 'Jouw eerste stap: scherp krijgen of er vraag is naar jouw onderwerp en hoe je je positioneert.',
+          label: 'Bekijk de Sprekersopleiding',
+          href:  'https://www.acupofambition.nl/sprekersopleiding' },
+    q3: { lead: 'Jouw eerste stap: een keynote bouwen waar je trots op bent.',
+          label: 'Bouw 1:1 jouw killer keynote',
+          href:  'https://www.acupofambition.nl/keynote' },
+    q4: { lead: 'Jouw eerste stap: zelfvertrouwen en plezier op het podium opbouwen.',
+          label: 'Bekijk de Sprekersopleiding',
+          href:  'https://www.acupofambition.nl/sprekersopleiding' },
+    q5: { lead: 'Jouw eerste stap: ervaring opdoen en bewijs van waarde verzamelen.',
+          label: 'Bekijk het LEVEL UP traject',
+          href:  'https://www.acupofambition.nl/level-up' },
+    q6: { lead: 'Jouw eerste stap: consistent zichtbaar worden als spreker.',
+          label: 'Bekijk het LEVEL UP traject',
+          href:  'https://www.acupofambition.nl/level-up' },
+    q_explore: { lead: 'Jouw eerste stap: onderzoeken wat jouw unieke verhaal is.',
+          label: 'Bekijk de Sprekersopleiding',
+          href:  'https://www.acupofambition.nl/sprekersopleiding' }
+  };
+
+  function buildTailoredCtas() {
+    // Find the first non-yes answer in the user's history
+    var firstGap = null;
+    for (var i = 0; i < state.history.length; i++) {
+      var h = state.history[i];
+      if (h.answerLabel !== 'Ja') { firstGap = h.nodeId; break; }
+    }
+    var match = firstGap && GAP_CTAS[firstGap];
+    if (!match) return null;
+    return {
+      lead: match.lead,
+      ctas: [
+        { label: match.label, href: match.href, primary: true },
+        { label: 'Alle opleidingen bekijken', href: 'https://www.acupofambition.nl', primary: false }
+      ]
+    };
+  }
+
   function renderResult(card, key) {
     var r = RESULTS[key];
     card.appendChild(el('div', { class: 'bb-result__badge' }, [r.badge]));
@@ -671,6 +758,17 @@
     r.body.forEach(function (p) {
       body.appendChild(el('p', { html: p }));
     });
+
+    // Tailored "first step" callout for the work outcome
+    var ctasToShow = r.ctas;
+    if (key === 'work') {
+      var tailored = buildTailoredCtas();
+      if (tailored) {
+        body.appendChild(el('p', { class: 'bb-result__lead', html: '<strong>' + tailored.lead + '</strong>' }));
+        ctasToShow = tailored.ctas;
+      }
+    }
+
     if (r.list) {
       var ul = el('ul', { class: 'bb-result__list' });
       r.list.forEach(function (li) { ul.appendChild(el('li', { html: li })); });
@@ -678,7 +776,7 @@
     }
     card.appendChild(body);
 
-    r.ctas.forEach(function (cta) {
+    ctasToShow.forEach(function (cta) {
       card.appendChild(el('a', {
         class: 'bb-result__cta' + (cta.primary ? '' : ' bb-result__cta--ghost'),
         href: cta.href,
@@ -692,6 +790,11 @@
       type: 'button',
       onclick: restart
     }, ['Opnieuw beginnen']));
+
+    // 🎉 Confetti for the "ready" outcome
+    if (key === 'ready') {
+      setTimeout(fireConfetti, 200);
+    }
   }
 
   // ====================================================================
@@ -764,6 +867,76 @@
       btn.textContent = 'Toon mijn uitslag';
       err.textContent = 'Er ging iets mis. Probeer het nog eens of mail ons direct.';
     });
+  }
+
+  // ====================================================================
+  // 🎉 Confetti — tiny canvas burst, brand colours, runs ~2.5s
+  // ====================================================================
+  function fireConfetti() {
+    var canvas = document.createElement('canvas');
+    canvas.className = 'bb-confetti';
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width  = window.innerWidth  * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+      canvas.style.width  = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    resize();
+
+    var colors = ['#5c1f1a', '#c8923b', '#b89691', '#f5e8e4', '#3f120e'];
+    var pieces = [];
+    var w = window.innerWidth, h = window.innerHeight;
+    for (var i = 0; i < 140; i++) {
+      pieces.push({
+        x: w / 2 + (Math.random() - 0.5) * 100,
+        y: h / 3,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 14 - 4,
+        g: 0.35 + Math.random() * 0.15,
+        size: 6 + Math.random() * 8,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        shape: Math.random() < 0.5 ? 'rect' : 'circ'
+      });
+    }
+
+    var start = performance.now();
+    var DURATION = 2600;
+
+    function frame(t) {
+      var elapsed = t - start;
+      ctx.clearRect(0, 0, w, h);
+      pieces.forEach(function (p) {
+        p.vy += p.g;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, 1 - elapsed / DURATION);
+        if (p.shape === 'rect') {
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.5);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+      if (elapsed < DURATION) {
+        requestAnimationFrame(frame);
+      } else {
+        canvas.remove();
+      }
+    }
+    requestAnimationFrame(frame);
   }
 
   render();
