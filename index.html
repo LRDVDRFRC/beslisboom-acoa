@@ -108,6 +108,7 @@
     padding: 18px 32px;
     cursor: pointer;
     transition: background 120ms ease, transform 120ms ease;
+    margin-bottom: 36px;
   }
   .bb-intro__start:hover {
     background: var(--acoa-accent-dark);
@@ -288,6 +289,8 @@
   }
   .bb-result__body p { margin: 0 0 14px; color: #2c2620; }
   .bb-result__body strong { color: var(--acoa-ink); }
+  .bb-result__body a { color: var(--acoa-accent); text-decoration: underline; }
+  .bb-result__body a:hover { color: var(--acoa-accent-dark); }
   .bb-result__cta {
     display: inline-block;
     background: var(--acoa-accent);
@@ -450,12 +453,14 @@
       badge: 'Goed nieuws',
       title: 'Je bent er klaar voor! 🎤',
       body: [
-        'Jouw verhaal staat, je staat met plezier op het podium en je investeert consistent in je zichtbaarheid. Tijd om jezelf neer te zetten als <strong>betaald spreker</strong>.',
-        'Meld je aan op ons platform <strong>vrouwelijkespreker.nu</strong> — voor €199,- per jaar ben jij vindbaar als betaald spreker.'
+        'Jouw verhaal staat, je staat met plezier op het podium en je investeert consistent in je zichtbaarheid.',
+        'Het is nodig dat veel meer vrouwen het podium gaan beklimmen — welk podium dat ook is! Daarom runnen wij — naast A Cup of Ambition — ook <a href="https://www.vrouwelijkespreker.nu" target="_blank" rel="noopener"><strong>vrouwelijkespreker.nu</strong></a> en <a href="https://www.vrouwelijkedagvoorzitter.nu" target="_blank" rel="noopener"><strong>vrouwelijkedagvoorzitter.nu</strong></a>, zodat meer vrouwen de kans krijgen zichzelf te profileren als betaald spreker.',
+        'Om vindbaar te zijn als spreker via deze website werken we met een betaald model. Voor <strong>€199,- per jaar (excl. btw)</strong> plaatsen we jouw foto en een korte omschrijving op de homepagina, en krijg je een unieke URL met jouw sprekersprofiel.',
+        'Wil je meer informatie of je direct aanmelden?'
       ],
       ctas: [
-        { label: 'Aanmelden bij vrouwelijkespreker.nu', href: 'https://vrouwelijkespreker.nu', primary: true },
-        { label: 'Terug naar A Cup of Ambition',         href: 'https://www.acupofambition.nl', primary: false }
+        { label: 'Aanmelden als spreker', href: 'https://www.vrouwelijkespreker.nu/aanmelden-als-spreker', primary: true },
+        { label: 'Terug naar A Cup of Ambition', href: 'https://www.acupofambition.nl', primary: false }
       ]
     },
     work: {
@@ -562,8 +567,18 @@
       ['MORE WOMEN ON STAGE, ook jij!']
     ));
     wrap.appendChild(el('p', { class: 'bb-intro__sub' },
-      ['Ben je er klaar voor?']
+      ['Ben jij er klaar voor om als betaald spreker geboekt te worden?']
     ));
+
+    wrap.appendChild(el('button', {
+      class: 'bb-intro__start',
+      type: 'button',
+      onclick: function () {
+        state.started = true;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, ['Doe de test!']));
 
     wrap.appendChild(el('p', { class: 'bb-intro__hi' },
       ['Hi, wij zijn Annick & Britt van A Cup of Ambition.']
@@ -585,17 +600,6 @@
       'Want als jij je verhaal niet vertelt, dan doet niemand dat voor je.'
     ]));
     wrap.appendChild(body);
-
-    wrap.appendChild(el('button', {
-      class: 'bb-intro__start',
-      type: 'button',
-      onclick: function () {
-        state.started = true;
-        render();
-        // scroll to top so the user starts with question 1 in view
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, ['Doe de test!']));
 
     root.appendChild(wrap);
   }
