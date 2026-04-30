@@ -62,17 +62,30 @@
   .bb-intro__photo {
     display: block;
     width: 100%;
-    max-width: 520px;
+    max-width: 360px;
     height: auto;
     border-radius: var(--acoa-radius);
-    margin: 0 auto 28px;
+    margin: 0 auto 24px;
     box-shadow: var(--acoa-shadow);
   }
   .bb-intro__hi {
-    font-size: clamp(20px, 3.4vw, 24px);
-    font-weight: 700;
-    color: var(--acoa-accent);
+    font-size: 17px;
+    font-weight: 400;
+    color: var(--acoa-ink);
     margin: 0 0 14px;
+    text-align: left;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .bb-framing {
+    max-width: 760px;
+    margin: 0 auto 18px;
+    color: var(--acoa-muted);
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: center;
+    padding: 0 4px;
   }
   .bb-intro__body {
     text-align: left;
@@ -365,10 +378,12 @@
     .bb-result__title { font-size: 28px; }
     .bb-gate__title { font-size: 22px; }
     .bb-result__cta { display: block; text-align: center; margin: 12px 0 0; }
-    .bb-intro__hi { font-size: 19px; }
+    .bb-intro__hi { font-size: 16px; }
     .bb-intro__body { font-size: 16px; }
     .bb-intro__hook { font-size: 22px; }
     .bb-intro__start { width: 100%; padding: 18px 24px; font-size: 17px; }
+    .bb-intro__photo { max-width: 240px; margin-bottom: 18px; }
+    .bb-framing { font-size: 15px; }
   }
 </style>
 
@@ -505,7 +520,7 @@
         '<strong>Schakel ons in voor een 1:1 coachtraject</strong> — bouw met ons je killer keynote, verkoopklaar gemaakt. <a href="https://www.acupofambition.nl/11-coaching" target="_blank" rel="noopener">Meer info →</a>'
       ],
       ctas: [
-        { label: 'Ontdek A Cup of Ambition', href: 'https://www.acupofambition.nl', primary: true }
+        { label: 'Ontdek A Cup of Ambition', href: 'https://www.acupofambition.nl/alle-trainingen1', primary: true }
       ]
     }
   };
@@ -566,6 +581,13 @@
       el('div', { class: 'bb-progress__bar', style: 'width:' + progressPct() + '%' })
     ]);
     root.appendChild(progress);
+
+    // Framing text shown only above the very first question
+    if (!state.finalResult && !state.pendingResult && state.history.length === 0) {
+      root.appendChild(el('p', { class: 'bb-framing' }, [
+        'Bij A Cup of Ambition vertegenwoordigen we vrouwelijke sprekers en dagvoorzitters én geven we trainingen om vrouwen met meer plezier en zelfvertrouwen te leren presenteren. Veel mensen willen de stap maken naar betaald spreker. Tijdens deze test ontdekken we of jij klaar bent om die stap te maken.'
+      ]));
+    }
 
     var card = el('div', { class: 'bb-card' });
     if (state.finalResult)        renderResult(card, state.finalResult);
