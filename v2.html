@@ -220,6 +220,54 @@
   }
   .bb-back:hover { color: var(--acoa-accent); }
 
+  /* ---------- Mini radar (shown during questions) ---------- */
+  .bb-mini-radar {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 400ms ease, transform 400ms ease;
+  }
+  .bb-mini-radar--visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .bb-mini-radar svg { width: 100%; height: 100%; }
+  .bb-mini-radar .bb-radar-data {
+    transition: all 500ms cubic-bezier(.2,.7,.3,1);
+  }
+  .bb-mini-radar-label {
+    font-size: 7px;
+    font-weight: 600;
+    fill: var(--acoa-muted);
+    text-anchor: middle;
+  }
+
+  /* ---------- Micro-feedback toast ---------- */
+  .bb-feedback {
+    text-align: center;
+    padding: 18px 16px;
+    margin: -8px 0 0;
+    animation: bbFeedbackIn 300ms ease both;
+  }
+  .bb-feedback__icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+  .bb-feedback__text {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--acoa-accent);
+  }
+  .bb-feedback--positive .bb-feedback__text { color: #2f9e6b; }
+  .bb-feedback--encourage .bb-feedback__text { color: var(--acoa-gold); }
+  @keyframes bbFeedbackIn {
+    0%   { opacity: 0; transform: translateY(6px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
   /* ---------- Email gate ---------- */
   .bb-gate__title {
     font-size: clamp(22px, 3.6vw, 28px);
@@ -716,6 +764,34 @@
     }
   };
 
+  // Short encouraging one-liners shown between questions
+  var MICRO = {
+    verhaal: {
+      yes:   { icon: '✨', text: 'Sterk — je hebt iets te vertellen!', tone: 'positive' },
+      maybe: { icon: '💡', text: 'Dat is eerlijk. Laten we het ontdekken.', tone: 'encourage' }
+    },
+    markt: {
+      yes:   { icon: '🎯', text: 'Mooi — er is publiek voor jouw verhaal.', tone: 'positive' },
+      maybe: { icon: '🔎', text: 'Goed om te onderzoeken — positionering is key.', tone: 'encourage' }
+    },
+    keynote: {
+      yes:   { icon: '🎤', text: 'Top — een uitgewerkt verhaal is goud waard.', tone: 'positive' },
+      no:    { icon: '🛠️', text: 'Geen zorgen — daar begint het avontuur.', tone: 'encourage' }
+    },
+    podium: {
+      yes:   { icon: '⚡', text: 'Krachtig — plezier op het podium is alles.', tone: 'positive' },
+      no:    { icon: '💪', text: 'Dit is te leren — de besten begonnen hier ook.', tone: 'encourage' }
+    },
+    ervaring: {
+      yes:   { icon: '🏆', text: 'Bewijs van waarde — dat overtuigt.', tone: 'positive' },
+      no:    { icon: '🌱', text: 'Ervaring groeit — elke keer op het podium telt.', tone: 'encourage' }
+    },
+    zichtbaarheid: {
+      yes:   { icon: '🔍', text: 'Zichtbaar en vindbaar — de puzzel is compleet!', tone: 'positive' },
+      no:    { icon: '📣', text: 'Zichtbaarheid is de laatste stap — die komt!', tone: 'encourage' }
+    }
+  };
+
   var RESULT_DEFS = {
     ready: {
       tag: 'klaar',
@@ -862,6 +938,57 @@
       var scoreVal = scores[d.key].value;
       svg += '<text class="bb-radar-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - 6).toFixed(1) + '">' + d.label + '</text>';
       svg += '<text class="bb-radar-score" x="' + p.x.toFixed(1) + '" y="' + (p.y + 8).toFixed(1) + '">' + scoreVal + '%</text>';
+    });
+
+    svg += '</svg>';
+    return svg;
+  }
+
+  // ====================================================================
+  // Mini radar (compact version shown during questions)
+  // ====================================================================
+  function buildMiniRadarSVG(scores, size) {
+    var cx = size / 2, cy = size / 2;
+    var r = size * 0.38;
+    var n = DIMENSIONS.length;
+    var labelR = r + 12;
+
+    function polarToCart(i, radius) {
+      var angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+    }
+
+    var svg = '<svg viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg">';
+
+    // Grid ring (just outer)
+    var outerPts = [];
+    for (var i = 0; i < n; i++) {
+      var p = polarToCart(i, r);
+      outerPts.push(p.x.toFixed(1) + ',' + p.y.toFixed(1));
+      svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x.toFixed(1) + '" y2="' + p.y.toFixed(1) + '" stroke="#ebe0d8" stroke-width="0.8" opacity="0.5"/>';
+    }
+    svg += '<polygon points="' + outerPts.join(' ') + '" fill="none" stroke="#ebe0d8" stroke-width="0.8" opacity="0.5"/>';
+
+    // Data polygon
+    var dataPoints = [];
+    var hasFilled = false;
+    DIMENSIONS.forEach(function (d, i) {
+      var s = scores[d.key];
+      var val = s.value / 100;
+      if (s.tone !== 'none') hasFilled = true;
+      var p = polarToCart(i, r * Math.max(val, 0.06));
+      dataPoints.push(p.x.toFixed(1) + ',' + p.y.toFixed(1));
+    });
+    if (hasFilled) {
+      svg += '<polygon class="bb-radar-data" points="' + dataPoints.join(' ') + '" fill="rgba(92,31,26,0.12)" stroke="#5c1f1a" stroke-width="1.5" stroke-linejoin="round"/>';
+    }
+
+    // Dimension labels (tiny)
+    DIMENSIONS.forEach(function (d, i) {
+      var p = polarToCart(i, labelR);
+      var s = scores[d.key];
+      var color = s.tone === 'none' ? '#ccc' : (s.tone === 'yes' ? '#2f9e6b' : '#c8923b');
+      svg += '<text class="bb-mini-radar-label" x="' + p.x.toFixed(1) + '" y="' + (p.y + 3).toFixed(1) + '" fill="' + color + '">' + d.icon + '</text>';
     });
 
     svg += '</svg>';
@@ -1155,6 +1282,14 @@
     var stepNum = state.history.length + 1;
     var est = stepNum + estimateRemainingFrom(state.currentNodeId);
 
+    // Mini radar (visible from question 2 onward)
+    if (state.history.length > 0) {
+      var scores = computeScores(state.history);
+      var miniWrap = el('div', { class: 'bb-mini-radar', html: buildMiniRadarSVG(scores, 120) });
+      card.appendChild(miniWrap);
+      setTimeout(function () { miniWrap.classList.add('bb-mini-radar--visible'); }, 50);
+    }
+
     card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Vraag ' + stepNum + ' van ' + est]));
     card.appendChild(el('h2', { class: 'bb-question' }, [node.question]));
     if (node.helper) card.appendChild(el('p', { class: 'bb-helper' }, [node.helper]));
@@ -1164,8 +1299,25 @@
       answers.appendChild(el('button', {
         class: 'bb-answer', type: 'button',
         onclick: function (e) {
+          // Disable all buttons
+          var btns = card.querySelectorAll('.bb-answer');
+          btns.forEach(function (b) { b.disabled = true; b.style.pointerEvents = 'none'; });
           e.currentTarget.classList.add('bb-answer--selected');
-          setTimeout(function () { choose(a); }, 180);
+
+          // Show micro-feedback if this question has a dimension
+          var dim = node.dimension;
+          var micro = dim && MICRO[dim] && MICRO[dim][a.tone];
+
+          if (micro) {
+            // Brief pause, then show feedback, then transition
+            setTimeout(function () {
+              showMicroFeedback(card, micro, function () {
+                choose(a);
+              });
+            }, 200);
+          } else {
+            setTimeout(function () { choose(a); }, 200);
+          }
         }
       }, [a.label]));
     });
@@ -1176,6 +1328,48 @@
         class: 'bb-back', type: 'button', onclick: goBack
       }, ['← Vorige vraag']));
     }
+  }
+
+  function showMicroFeedback(card, micro, callback) {
+    // Hide the question content
+    var question = card.querySelector('.bb-question');
+    var helper = card.querySelector('.bb-helper');
+    var answers = card.querySelector('.bb-answers');
+    var back = card.querySelector('.bb-back');
+    if (question) question.style.display = 'none';
+    if (helper) helper.style.display = 'none';
+    if (answers) answers.style.display = 'none';
+    if (back) back.style.display = 'none';
+    var eyebrow = card.querySelector('.bb-eyebrow');
+    if (eyebrow) eyebrow.style.display = 'none';
+
+    // Show feedback
+    var toneCls = micro.tone === 'positive' ? 'bb-feedback--positive' : 'bb-feedback--encourage';
+    var fb = el('div', { class: 'bb-feedback ' + toneCls }, [
+      el('div', { class: 'bb-feedback__icon' }, [micro.icon]),
+      el('div', { class: 'bb-feedback__text' }, [micro.text])
+    ]);
+    card.appendChild(fb);
+
+    // Update mini radar in-place if present
+    var miniWrap = card.querySelector('.bb-mini-radar');
+    if (miniWrap) {
+      // Recompute with the answer we just gave (peek ahead)
+      var peekHistory = state.history.concat([{ nodeId: state.currentNodeId, answerLabel: '' }]);
+      // Actually recompute properly by using current answer's tone
+      var node = TREE.nodes[state.currentNodeId];
+      if (node && node.dimension) {
+        var peekScores = computeScores(state.history);
+        var answer = node.answers.find(function (a2) { return MICRO[node.dimension] && MICRO[node.dimension][a2.tone] === micro; });
+        if (answer) {
+          var val = answer.tone === 'yes' ? 100 : answer.tone === 'maybe' ? 50 : 25;
+          peekScores[node.dimension] = { value: val, tone: answer.tone };
+        }
+        miniWrap.innerHTML = buildMiniRadarSVG(peekScores, 120);
+      }
+    }
+
+    setTimeout(callback, 1100);
   }
 
   function renderEmailGate(card) {
