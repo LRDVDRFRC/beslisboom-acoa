@@ -1,0 +1,846 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  A Cup of Ambition — Beslisboom v4 (AI Conversation)
+  ====================================================
+  Fully AI-driven chat: user types free-text answers,
+  AI responds warmly and asks follow-up questions based
+  on what the user shared. Scores derived from conversation.
+-->
+<div id="chat-root"></div>
+
+<style>
+  #chat-root {
+    --c-bg: #fdf8f4;
+    --c-card: #ffffff;
+    --c-ink: #2a1411;
+    --c-muted: #7a6660;
+    --c-accent: #5c1f1a;
+    --c-accent-dark: #3f120e;
+    --c-gold: #c8923b;
+    --c-soft: #f5e8e4;
+    --c-border: #ebe0d8;
+    --c-green: #2f9e6b;
+
+    box-sizing: border-box;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--c-ink);
+    line-height: 1.5;
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--c-bg);
+  }
+  #chat-root *, #chat-root *::before, #chat-root *::after { box-sizing: border-box; }
+
+  /* ---------- Header ---------- */
+  .ch-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--c-accent);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .ch-header__avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .ch-header__info { flex: 1; }
+  .ch-header__name { font-weight: 700; font-size: 16px; }
+  .ch-header__status { font-size: 12px; opacity: 0.8; }
+
+  /* ---------- Messages area ---------- */
+  .ch-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ---------- Message bubbles ---------- */
+  .ch-msg {
+    max-width: 82%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 16px;
+    line-height: 1.5;
+    animation: chFadeIn 280ms ease both;
+    word-wrap: break-word;
+  }
+  .ch-msg a { color: var(--c-accent); font-weight: 600; }
+  @keyframes chFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ch-msg--bot {
+    align-self: flex-start;
+    background: var(--c-card);
+    color: var(--c-ink);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(42,20,17,0.06);
+  }
+  .ch-msg--user {
+    align-self: flex-end;
+    background: var(--c-accent);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .ch-msg--system {
+    align-self: center;
+    background: transparent;
+    color: var(--c-muted);
+    font-size: 13px;
+    text-align: center;
+    max-width: 100%;
+    padding: 8px 0;
+  }
+
+  /* ---------- Typing indicator ---------- */
+  .ch-typing {
+    align-self: flex-start;
+    display: flex;
+    gap: 4px;
+    padding: 14px 20px;
+    background: var(--c-card);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(42,20,17,0.06);
+    animation: chFadeIn 200ms ease both;
+  }
+  .ch-typing__dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c-muted);
+    animation: chTypingBounce 1.2s infinite;
+  }
+  .ch-typing__dot:nth-child(2) { animation-delay: 0.15s; }
+  .ch-typing__dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes chTypingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ---------- Bottom area (input + buttons) ---------- */
+  .ch-actions {
+    flex-shrink: 0;
+    padding: 12px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--c-bg);
+    border-top: 1px solid var(--c-border);
+  }
+  .ch-action {
+    appearance: none;
+    background: var(--c-card);
+    border: 1.5px solid var(--c-border);
+    border-radius: 24px;
+    padding: 14px 20px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--c-ink);
+    cursor: pointer;
+    text-align: center;
+    transition: all 140ms ease;
+  }
+  .ch-action:hover {
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    transform: translateY(-1px);
+  }
+  .ch-action--primary {
+    background: var(--c-accent);
+    color: #fff;
+    border-color: var(--c-accent);
+  }
+  .ch-action--primary:hover {
+    background: var(--c-accent-dark);
+    color: #fff;
+  }
+  .ch-action--ghost {
+    background: transparent;
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+  }
+
+  /* ---------- Text input bar ---------- */
+  .ch-input-bar {
+    flex-shrink: 0;
+    padding: 10px 16px 24px;
+    background: var(--c-bg);
+    border-top: 1px solid var(--c-border);
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .ch-input-bar textarea {
+    flex: 1;
+    font: inherit;
+    font-size: 16px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--c-border);
+    border-radius: 20px;
+    background: var(--c-card);
+    color: var(--c-ink);
+    resize: none;
+    min-height: 46px;
+    max-height: 120px;
+    line-height: 1.4;
+    transition: border-color 140ms ease;
+  }
+  .ch-input-bar textarea:focus { outline: none; border-color: var(--c-accent); }
+  .ch-input-bar textarea::placeholder { color: var(--c-muted); }
+  .ch-input-bar__send {
+    appearance: none;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    border: none;
+    background: var(--c-accent);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 140ms ease, transform 100ms ease;
+  }
+  .ch-input-bar__send:hover { background: var(--c-accent-dark); }
+  .ch-input-bar__send:active { transform: scale(0.93); }
+  .ch-input-bar__send:disabled { opacity: 0.4; cursor: default; transform: none; }
+  .ch-input-bar__send svg { width: 20px; height: 20px; }
+
+  /* ---------- Progress dots ---------- */
+  .ch-progress {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 0 2px;
+  }
+  .ch-progress__dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c-border);
+    transition: background 300ms ease, transform 300ms ease;
+  }
+  .ch-progress__dot--done { background: var(--c-green); transform: scale(1.1); }
+  .ch-progress__dot--active { background: var(--c-accent); transform: scale(1.2); }
+
+  /* ---------- Email form ---------- */
+  .ch-form { display: flex; flex-direction: column; gap: 10px; }
+  .ch-form input {
+    font: inherit; font-size: 16px;
+    padding: 13px 16px;
+    border: 1.5px solid var(--c-border);
+    border-radius: 14px;
+    background: var(--c-card);
+    color: var(--c-ink);
+    transition: border-color 140ms ease;
+  }
+  .ch-form input:focus { outline: none; border-color: var(--c-accent); }
+  .ch-form__consent {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: 13px; color: var(--c-muted); line-height: 1.4;
+  }
+  .ch-form__consent input { margin-top: 2px; accent-color: var(--c-accent); }
+  .ch-form__privacy { font-size: 12px; color: var(--c-muted); text-align: center; }
+  .ch-form__error { color: #c44a4a; font-size: 14px; text-align: center; }
+
+  /* ---------- Result card ---------- */
+  .ch-result {
+    background: var(--c-card);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(42,20,17,0.08);
+    max-width: 92%;
+    align-self: flex-start;
+    animation: chFadeIn 400ms ease both;
+  }
+  .ch-result__badge {
+    display: inline-block;
+    background: var(--c-soft);
+    color: var(--c-accent-dark);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .ch-result__score {
+    text-align: center;
+    margin: 12px 0 16px;
+  }
+  .ch-result__score-ring { width: 90px; height: 90px; margin: 0 auto; position: relative; }
+  .ch-result__score-ring svg { width: 100%; height: 100%; }
+  .ch-result__score-num {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 800; color: var(--c-accent);
+  }
+  .ch-result__score-label {
+    font-size: 11px; color: var(--c-muted); text-transform: uppercase;
+    letter-spacing: 0.1em; font-weight: 600; margin-top: 4px;
+  }
+  .ch-result__title {
+    font-size: 22px; font-weight: 800; line-height: 1.2; margin: 0 0 12px;
+  }
+  .ch-result p { margin: 0 0 10px; font-size: 15px; color: #2c2620; line-height: 1.55; }
+  .ch-result strong { color: var(--c-ink); }
+  .ch-result a { color: var(--c-accent); }
+  .ch-result__radar { width: 220px; height: 220px; margin: 16px auto; }
+  .ch-result__radar svg { width: 100%; height: 100%; }
+
+  .ch-dim { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--c-border); font-size: 14px; }
+  .ch-dim__icon { font-size: 16px; flex-shrink: 0; }
+  .ch-dim__name { font-weight: 700; color: var(--c-accent); font-size: 13px; }
+  .ch-dim__text { color: #2c2620; line-height: 1.45; }
+  .ch-dim__bar { height: 4px; border-radius: 2px; background: var(--c-soft); margin-top: 4px; overflow: hidden; }
+  .ch-dim__fill { height: 100%; border-radius: 2px; transition: width 600ms ease; }
+  .ch-dim__fill--high { background: var(--c-green); }
+  .ch-dim__fill--med { background: var(--c-gold); }
+  .ch-dim__fill--low { background: #c44a4a; }
+
+  .ch-ai-text {
+    background: linear-gradient(135deg, rgba(92,31,26,0.05), rgba(200,146,59,0.05));
+    border-radius: 12px;
+    padding: 14px;
+    margin: 12px 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #2c2620;
+    border-left: 3px solid var(--c-gold);
+  }
+
+  .ch-confetti {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 9999;
+  }
+
+  @media (max-width: 480px) {
+    .ch-msg { max-width: 88%; font-size: 15px; }
+    .ch-result { max-width: 95%; padding: 16px; }
+    .ch-result__title { font-size: 20px; }
+    .ch-result__radar { width: 180px; height: 180px; }
+  }
+</style>
+
+<script>
+(function () {
+  var AC_ENDPOINT = 'https://acupofambition.activehosted.com/proc.php?jsonp=true';
+  var AC_FORM = { u:'49', f:'49', s:'', c:'0', m:'0', act:'sub', v:'2', or:'8c06a683-930f-4d72-8483-958921b8188b' };
+  var AC_OUTCOME_FIELD = 'field[184]';
+  var CHAT_ENDPOINT = 'https://deploy-snowy-delta.vercel.app/api/chat';
+
+  var DIMENSIONS = [
+    { key: 'verhaal', label: 'Verhaal', icon: '\u{1F4D6}',
+      question: 'Laten we beginnen! Wat is jouw verhaal? Welke inzichten of ervaringen heb jij die waardevol zijn voor een publiek?',
+      nextLabel: 'of er vraag is naar haar onderwerp vanuit bedrijven, events of organisaties' },
+    { key: 'markt', label: 'Marktvraag', icon: '\u{1F3AF}',
+      nextLabel: 'of ze al een keynote of presentatie heeft uitgewerkt met een duidelijke opbouw en kernboodschap' },
+    { key: 'keynote', label: 'Keynote', icon: '\u{1F3A4}',
+      nextLabel: 'of ze met plezier en zelfvertrouwen op een podium kan staan' },
+    { key: 'podium', label: 'Podiumkracht', icon: '⚡',
+      nextLabel: 'of ze al ervaring heeft op het podium, zoals testimonials of eerdere optredens' },
+    { key: 'ervaring', label: 'Ervaring', icon: '\u{1F3C6}',
+      nextLabel: 'of ze zichtbaar en vindbaar is als spreker en bereid is daarin te investeren' },
+    { key: 'zichtbaarheid', label: 'Zichtbaarheid', icon: '\u{1F50D}',
+      nextLabel: null }
+  ];
+
+  var FEEDBACK = {
+    verhaal:       { high: 'Je hebt waardevolle inzichten om te delen — het fundament van iedere goede spreker.', low: 'Het ontdekken van jouw unieke verhaal is de allereerste stap.' },
+    markt:         { high: 'Er is vraag naar jouw onderwerp — organisaties zijn bereid te investeren in wat jij biedt.', low: 'Zonder publiek geen podium — dit is belangrijk om te onderzoeken.' },
+    keynote:       { high: 'Een uitgewerkte keynote geeft je een echte voorsprong.', low: 'Een sterke keynote bouwen is een cruciale stap die nog voor je ligt.' },
+    podium:        { high: 'Plezier en zelfvertrouwen op het podium — dat is goud waard.', low: 'Zelfvertrouwen groeit met oefening en de juiste begeleiding.' },
+    ervaring:      { high: 'Podiumervaring en bewijs van waarde maken je geloofwaardig voor opdrachtgevers.', low: 'Ervaring opdoen is een stap die je kunt zetten zodra je fundament staat.' },
+    zichtbaarheid: { high: 'Zichtbaar en vindbaar — de laatste puzzelstukjes zijn op hun plek.', low: 'Zichtbaarheid is iets om strategisch op te bouwen.' }
+  };
+
+  var RESULT_DEFS = {
+    ready: { tag:'klaar', badge:'Goed nieuws', title:'Je bent er klaar voor! \u{1F3A4}',
+      body: ['Jouw verhaal staat, je staat met plezier op het podium en je investeert in je zichtbaarheid.', 'Wij runnen <a href="https://www.vrouwelijkespreker.nu" target="_blank"><strong>vrouwelijkespreker.nu</strong></a> zodat meer vrouwen de kans krijgen zichzelf te profileren als betaald spreker. Voor <strong>€199,- per jaar</strong> ben je vindbaar met een eigen sprekersprofiel.'],
+      ctas: [{ label:'Aanmelden als spreker', href:'https://www.vrouwelijkespreker.nu/aanmelden-als-spreker', primary:true }, { label:'Naar A Cup of Ambition', href:'https://www.acupofambition.nl', primary:false }]
+    },
+    work: { tag:'werk-aan-de-winkel', badge:'Bijna zover', title:"Er is werk aan de winkel — let's go!",
+      body: ['Je motivatie is er! Hieronder zie je per dimensie waar je staat. Wij helpen je graag verder:'],
+      list: ['<strong>Sprekersopleiding</strong> — sprekerskills, zelfvertrouwen en jouw unieke verhaal. <a href="https://www.acupofambition.nl/opleiding" target="_blank">Meer info →</a>', '<strong>LEVEL UP traject</strong> — alle facetten om betaald spreker te worden. <a href="https://www.acupofambition.nl/kickstart-betaald-spreken" target="_blank">Meer info →</a>', '<strong>1:1 coaching</strong> — samen jouw killer keynote bouwen. <a href="https://www.acupofambition.nl/11-coaching" target="_blank">Meer info →</a>'],
+      ctas: [{ label:'Bekijk de opleidingen', href:'https://www.acupofambition.nl/alle-trainingen1', primary:true }]
+    },
+    not_ready: { tag:'nog-niet-klaar', badge:'Nog even geduld', title:'Je bent er nog niet klaar voor.',
+      body: ['Betaald spreker worden vergt tijd, zichtbaarheid en focus. Op basis van ons gesprek lijkt het erop dat er nog een paar stappen te zetten zijn. Onze eerlijke mening? <strong>Met de juiste begeleiding kun je er komen.</strong>', 'Mocht je de stap willen zetten: wij staan klaar.'],
+      ctas: [{ label:'Ontdek A Cup of Ambition', href:'https://www.acupofambition.nl/alle-trainingen1', primary:true }]
+    }
+  };
+
+  // State
+  var root = document.getElementById('chat-root');
+  var messagesEl, actionsEl, inputBarEl;
+  var state = {
+    questionIndex: 0,
+    conversationMessages: [],
+    userName: '',
+    aiScores: null,
+    aiOutcome: null,
+    aiText: null,
+    busy: false
+  };
+
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html !== undefined && typeof html === 'string') n.innerHTML = html;
+    return n;
+  }
+
+  function scrollBottom() {
+    setTimeout(function () { messagesEl.scrollTop = messagesEl.scrollHeight; }, 50);
+  }
+
+  // Message queue
+  var msgQueue = [];
+  var isProcessing = false;
+
+  function queueBotMsg(html, delay) {
+    msgQueue.push({ html: html, delay: delay || 600 });
+    if (!isProcessing) processQueue();
+  }
+
+  function queueAction(callback) {
+    msgQueue.push({ action: callback, delay: 300 });
+    if (!isProcessing) processQueue();
+  }
+
+  function processQueue() {
+    if (msgQueue.length === 0) { isProcessing = false; return; }
+    isProcessing = true;
+    var item = msgQueue.shift();
+
+    var typing = el('div', 'ch-typing');
+    typing.innerHTML = '<div class="ch-typing__dot"></div><div class="ch-typing__dot"></div><div class="ch-typing__dot"></div>';
+    messagesEl.appendChild(typing);
+    scrollBottom();
+
+    setTimeout(function () {
+      typing.remove();
+      if (item.action) { item.action(); }
+      else { addBotMsg(item.html); }
+      scrollBottom();
+      processQueue();
+    }, item.delay);
+  }
+
+  function addBotMsg(html) {
+    var msg = el('div', 'ch-msg ch-msg--bot', html);
+    messagesEl.appendChild(msg);
+    scrollBottom();
+  }
+
+  function addUserMsg(text) {
+    var msg = el('div', 'ch-msg ch-msg--user');
+    msg.textContent = text;
+    messagesEl.appendChild(msg);
+    scrollBottom();
+  }
+
+  function showTyping() {
+    var typing = el('div', 'ch-typing');
+    typing.id = 'live-typing';
+    typing.innerHTML = '<div class="ch-typing__dot"></div><div class="ch-typing__dot"></div><div class="ch-typing__dot"></div>';
+    messagesEl.appendChild(typing);
+    scrollBottom();
+    return typing;
+  }
+
+  function hideTyping() {
+    var t = document.getElementById('live-typing');
+    if (t) t.remove();
+  }
+
+  // Progress dots
+  function updateProgress() {
+    var dots = document.querySelectorAll('.ch-progress__dot');
+    dots.forEach(function (dot, i) {
+      dot.className = 'ch-progress__dot';
+      if (i < state.questionIndex) dot.className += ' ch-progress__dot--done';
+      else if (i === state.questionIndex) dot.className += ' ch-progress__dot--active';
+    });
+  }
+
+  // Init
+  function init() {
+    root.innerHTML = '';
+
+    var header = el('div', 'ch-header');
+    header.innerHTML = '<img class="ch-header__avatar" src="logo.jpg" alt="Britt"><div class="ch-header__info"><div class="ch-header__name">Britt — A Cup of Ambition</div><div class="ch-header__status">Online</div></div>';
+    root.appendChild(header);
+
+    messagesEl = el('div', 'ch-messages');
+    root.appendChild(messagesEl);
+
+    actionsEl = el('div', 'ch-actions');
+    actionsEl.style.display = 'none';
+    root.appendChild(actionsEl);
+
+    inputBarEl = el('div', 'ch-input-bar');
+    inputBarEl.style.display = 'none';
+    inputBarEl.innerHTML = '<textarea id="ch-textarea" rows="1" placeholder="Typ je antwoord..."></textarea>' +
+      '<button class="ch-input-bar__send" id="ch-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>';
+    root.appendChild(inputBarEl);
+
+    startConversation();
+  }
+
+  function startConversation() {
+    queueBotMsg('Hey! \u{1F44B} Welkom bij A Cup of Ambition.');
+    queueBotMsg('Ik ben Britt, en samen met Annick help ik vrouwen om het podium te beklimmen als betaald spreker.');
+    queueBotMsg('Ik stel je een paar vragen om te ontdekken waar jij staat. Vertel gerust in je eigen woorden! \u{1F3A4}');
+    queueAction(function () {
+      showActions([{
+        label: 'Ja, ik wil het ontdekken!',
+        primary: true,
+        onclick: function () {
+          addUserMsg('Ja, ik wil het ontdekken!');
+          clearActions();
+          actionsEl.style.display = 'none';
+          setTimeout(function () { askFirstQuestion(); }, 400);
+        }
+      }]);
+    });
+  }
+
+  function askFirstQuestion() {
+    state.questionIndex = 0;
+    var dim = DIMENSIONS[0];
+
+    queueBotMsg('<strong>' + dim.question + '</strong>');
+    queueAction(function () {
+      state.conversationMessages.push({ role: 'assistant', content: dim.question });
+      showInputBar();
+    });
+  }
+
+  // Input bar
+  function showInputBar() {
+    inputBarEl.style.display = '';
+    actionsEl.style.display = 'none';
+    var ta = document.getElementById('ch-textarea');
+    var btn = document.getElementById('ch-send');
+
+    ta.value = '';
+    ta.disabled = false;
+    btn.disabled = false;
+    ta.focus();
+
+    ta.oninput = function () {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+    };
+
+    btn.onclick = function () { handleSend(); };
+    ta.onkeydown = function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    };
+
+    // Progress dots
+    var prog = inputBarEl.querySelector('.ch-progress');
+    if (!prog) {
+      prog = el('div', 'ch-progress');
+      for (var i = 0; i < 6; i++) prog.appendChild(el('div', 'ch-progress__dot'));
+      inputBarEl.insertBefore(prog, inputBarEl.firstChild);
+    }
+    updateProgress();
+  }
+
+  function hideInputBar() {
+    inputBarEl.style.display = 'none';
+  }
+
+  function handleSend() {
+    if (state.busy) return;
+    var ta = document.getElementById('ch-textarea');
+    var text = ta.value.trim();
+    if (!text) return;
+
+    state.busy = true;
+    addUserMsg(text);
+    ta.value = '';
+    ta.style.height = 'auto';
+    ta.disabled = true;
+    document.getElementById('ch-send').disabled = true;
+
+    state.conversationMessages.push({ role: 'user', content: text });
+    state.questionIndex++;
+    updateProgress();
+
+    if (state.questionIndex >= 6) {
+      hideInputBar();
+      setTimeout(function () { askForEmail(); }, 500);
+      return;
+    }
+
+    var nextDim = DIMENSIONS[state.questionIndex];
+    var typing = showTyping();
+
+    fetch(CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'respond',
+        messages: state.conversationMessages,
+        nextDimension: nextDim.nextLabel || nextDim.label
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      hideTyping();
+      var reply = d.reply;
+      if (!reply) {
+        reply = 'Dank je voor het delen! ' + (nextDim.question || 'Vertel me meer over ' + nextDim.label.toLowerCase() + '.');
+      }
+      addBotMsg(reply);
+      state.conversationMessages.push({ role: 'assistant', content: reply });
+      state.busy = false;
+      var ta2 = document.getElementById('ch-textarea');
+      ta2.disabled = false;
+      document.getElementById('ch-send').disabled = false;
+      ta2.focus();
+    })
+    .catch(function () {
+      hideTyping();
+      var fallback = 'Mooi! Vertel eens, hoe zit het met ' + nextDim.label.toLowerCase() + '?';
+      addBotMsg(fallback);
+      state.conversationMessages.push({ role: 'assistant', content: fallback });
+      state.busy = false;
+      var ta2 = document.getElementById('ch-textarea');
+      ta2.disabled = false;
+      document.getElementById('ch-send').disabled = false;
+      ta2.focus();
+    });
+  }
+
+  // Email gate
+  function askForEmail() {
+    queueBotMsg('Top! Ik heb genoeg om je persoonlijke analyse te maken. ✨');
+    queueBotMsg('Waar mag ik je resultaat naartoe sturen?');
+    queueAction(function () { showEmailForm(); });
+  }
+
+  function showEmailForm() {
+    actionsEl.style.display = '';
+    actionsEl.innerHTML = '';
+    var form = el('div', 'ch-form');
+    form.innerHTML = '<input type="text" id="ch-name" placeholder="Jouw naam" autocomplete="name">' +
+      '<input type="email" id="ch-email" placeholder="jij@voorbeeld.nl" autocomplete="email">' +
+      '<label class="ch-form__consent"><input type="checkbox" id="ch-consent"><span>Ja, stuur me ook inspiratie van A Cup of Ambition. (Optioneel)</span></label>' +
+      '<div class="ch-form__privacy">\u{1F512} Geen spam — je e-mailadres blijft bij ons.</div>' +
+      '<div class="ch-form__error" id="ch-error"></div>';
+    actionsEl.appendChild(form);
+
+    var btn = el('button', 'ch-action ch-action--primary');
+    btn.textContent = 'Toon mijn analyse';
+    btn.onclick = function () { submitEmailForm(btn); };
+    actionsEl.appendChild(btn);
+  }
+
+  function submitEmailForm(btn) {
+    var nameVal = document.getElementById('ch-name').value.trim();
+    var emailVal = document.getElementById('ch-email').value.trim();
+    var consent = document.getElementById('ch-consent').checked;
+    var err = document.getElementById('ch-error');
+
+    if (!nameVal || !emailVal) { err.textContent = 'Vul je naam en e-mailadres in.'; return; }
+    if (emailVal.indexOf('@') === -1) { err.textContent = 'Voer een geldig e-mailadres in.'; return; }
+
+    state.userName = nameVal;
+    btn.disabled = true;
+    btn.textContent = 'Bezig...';
+
+    // Submit to AC (we'll set the outcome tag after scoring)
+    addUserMsg(nameVal + ' — ' + emailVal);
+    clearActions();
+    actionsEl.style.display = 'none';
+
+    // Store email data for later AC submission
+    state.emailData = { name: nameVal, email: emailVal, consent: consent };
+    showAnalyzing();
+  }
+
+  function clearActions() { actionsEl.innerHTML = ''; }
+
+  // Analyzing + scoring
+  function showAnalyzing() {
+    queueBotMsg('Dankje, ' + state.userName + '! Even kijken naar ons gesprek...');
+
+    var typing = showTyping();
+
+    fetch(CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'score',
+        messages: state.conversationMessages,
+        name: state.userName
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      hideTyping();
+      if (d.scores) {
+        state.aiScores = d.scores;
+        state.aiOutcome = d.outcome || 'work';
+        state.aiText = d.text || null;
+      } else {
+        state.aiScores = { verhaal: 50, markt: 50, keynote: 50, podium: 50, ervaring: 50, zichtbaarheid: 50 };
+        state.aiOutcome = 'work';
+        state.aiText = null;
+      }
+      submitToAC();
+      showResult();
+    })
+    .catch(function () {
+      hideTyping();
+      state.aiScores = { verhaal: 50, markt: 50, keynote: 50, podium: 50, ervaring: 50, zichtbaarheid: 50 };
+      state.aiOutcome = 'work';
+      state.aiText = null;
+      submitToAC();
+      showResult();
+    });
+  }
+
+  function submitToAC() {
+    var ed = state.emailData;
+    if (!ed) return;
+    var outcomeTag = RESULT_DEFS[state.aiOutcome] ? RESULT_DEFS[state.aiOutcome].tag : 'werk-aan-de-winkel';
+    var data = new FormData();
+    Object.keys(AC_FORM).forEach(function (k) { data.append(k, AC_FORM[k]); });
+    data.append('fullname', ed.name);
+    data.append('email', ed.email);
+    data.append(AC_OUTCOME_FIELD, outcomeTag);
+    var tags = ['beslisboom-lead', 'beslisboom-v4', outcomeTag];
+    if (ed.consent) tags.push('nieuwsbrief');
+    data.append('tags', tags.join(','));
+    fetch(AC_ENDPOINT, { method: 'POST', mode: 'no-cors', body: data }).catch(function () {});
+  }
+
+  // Radar SVG
+  function buildRadarSVG(scores, size) {
+    var cx=size/2, cy=size/2, r=size*0.36, n=DIMENSIONS.length, lr=r+22;
+    function pc(i, rad) { var a=Math.PI*2*i/n-Math.PI/2; return { x:cx+rad*Math.cos(a), y:cy+rad*Math.sin(a) }; }
+    var s='<svg viewBox="0 0 '+size+' '+size+'" xmlns="http://www.w3.org/2000/svg">';
+    [0.25,0.5,0.75,1].forEach(function(p){ var pts=[]; for(var i=0;i<n;i++){var pt=pc(i,r*p);pts.push(pt.x.toFixed(1)+','+pt.y.toFixed(1));} s+='<polygon points="'+pts.join(' ')+'" fill="none" stroke="#ebe0d8" stroke-width="1" opacity="0.6"/>'; });
+    for(var i=0;i<n;i++){var p=pc(i,r);s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+'" stroke="#ebe0d8" stroke-width="1" opacity="0.4"/>';}
+    var dp=[],dots='';
+    DIMENSIONS.forEach(function(d,i){var v=(scores[d.key]||50)/100;var p=pc(i,r*Math.max(v,0.08));dp.push(p.x.toFixed(1)+','+p.y.toFixed(1));dots+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="#5c1f1a" stroke="#fff" stroke-width="1.5"/>';});
+    s+='<polygon points="'+dp.join(' ')+'" fill="rgba(92,31,26,0.15)" stroke="#5c1f1a" stroke-width="2" stroke-linejoin="round"/>';
+    s+=dots;
+    DIMENSIONS.forEach(function(d,i){var p=pc(i,lr);s+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-5).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#2a1411">'+d.label+'</text><text x="'+p.x.toFixed(1)+'" y="'+(p.y+7).toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="600" fill="#c8923b">'+(scores[d.key]||50)+'%</text>';});
+    s+='</svg>'; return s;
+  }
+
+  function showResult() {
+    var key = state.aiOutcome;
+    var r = RESULT_DEFS[key];
+    var scores = state.aiScores;
+    var total = 0;
+    DIMENSIONS.forEach(function (d) { total += (scores[d.key] || 50); });
+    var score = Math.round(total / DIMENSIONS.length);
+
+    var html = '<div class="ch-result__badge">' + r.badge + '</div>';
+
+    var circ = 2 * Math.PI * 42;
+    var off = circ - (circ * score / 100);
+    html += '<div class="ch-result__score"><div class="ch-result__score-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="#ebe0d8" stroke-width="7"/><circle cx="50" cy="50" r="42" fill="none" stroke="#5c1f1a" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 50 50)"/></svg><div class="ch-result__score-num">' + score + '%</div></div><div class="ch-result__score-label">Speaker Readiness Score</div></div>';
+
+    html += '<div class="ch-result__title">' + r.title + '</div>';
+
+    if (state.aiText) {
+      var cleaned = state.aiText.replace(/^#+\s+[^\n]*/gm, '').replace(/\*\*/g, '').replace(/__/g, '').replace(/^\s*\n/gm, '').trim();
+      if (cleaned) html += '<div class="ch-ai-text">' + cleaned.replace(/\n/g, '<br>') + '</div>';
+    }
+
+    r.body.forEach(function (p) { html += '<p>' + p + '</p>'; });
+
+    if (r.list) {
+      html += '<ul style="padding-left:18px;margin:8px 0;">';
+      r.list.forEach(function (li) { html += '<li style="margin-bottom:10px;font-size:14px;line-height:1.5;">' + li + '</li>'; });
+      html += '</ul>';
+    }
+
+    html += '<div class="ch-result__radar">' + buildRadarSVG(scores, 220) + '</div>';
+
+    DIMENSIONS.forEach(function (d) {
+      var v = scores[d.key] || 50;
+      var fb = FEEDBACK[d.key];
+      var text = v >= 50 ? fb.high : fb.low;
+      var fillCls = v >= 75 ? 'ch-dim__fill--high' : v >= 50 ? 'ch-dim__fill--med' : 'ch-dim__fill--low';
+      html += '<div class="ch-dim"><div class="ch-dim__icon">' + d.icon + '</div><div style="flex:1;"><div class="ch-dim__name">' + d.label + ' — ' + v + '%</div><div class="ch-dim__bar"><div class="ch-dim__fill ' + fillCls + '" style="width:' + v + '%;"></div></div><div class="ch-dim__text">' + text + '</div></div></div>';
+    });
+
+    var card = el('div', 'ch-result');
+    card.innerHTML = html;
+    messagesEl.appendChild(card);
+    scrollBottom();
+
+    if (key === 'ready') setTimeout(fireConfetti, 300);
+
+    setTimeout(function () {
+      showActions(r.ctas.map(function (c) {
+        return { label: c.label, primary: c.primary, onclick: function () { window.open(c.href, '_blank'); } };
+      }));
+    }, 800);
+  }
+
+  function showActions(buttons) {
+    actionsEl.style.display = '';
+    actionsEl.innerHTML = '';
+    buttons.forEach(function (b) {
+      var cls = 'ch-action';
+      if (b.primary) cls += ' ch-action--primary';
+      else if (b.ghost) cls += ' ch-action--ghost';
+      var btn = el('button', cls);
+      btn.textContent = b.label;
+      btn.onclick = function () { if (b.onclick) b.onclick(); };
+      actionsEl.appendChild(btn);
+    });
+  }
+
+  function fireConfetti() {
+    var c = document.createElement('canvas');
+    c.className = 'ch-confetti';
+    document.body.appendChild(c);
+    var ctx = c.getContext('2d');
+    c.width = window.innerWidth * devicePixelRatio;
+    c.height = window.innerHeight * devicePixelRatio;
+    c.style.width = window.innerWidth + 'px';
+    c.style.height = window.innerHeight + 'px';
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    var cols = ['#5c1f1a','#c8923b','#b89691','#f5e8e4','#3f120e'];
+    var pcs = [], w = window.innerWidth, h = window.innerHeight;
+    for (var i = 0; i < 120; i++) pcs.push({ x:w/2+(Math.random()-0.5)*100, y:h/3, vx:(Math.random()-0.5)*14, vy:-Math.random()*14-4, g:0.35+Math.random()*0.15, sz:6+Math.random()*8, rot:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.4, col:cols[Math.floor(Math.random()*cols.length)], sh:Math.random()<0.5?'r':'c' });
+    var st = performance.now(), DUR = 2600;
+    function f(t) { var el=t-st; ctx.clearRect(0,0,w,h); pcs.forEach(function(p){ p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr; ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.col;ctx.globalAlpha=Math.max(0,1-el/DUR); if(p.sh==='r')ctx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz*0.5); else{ctx.beginPath();ctx.arc(0,0,p.sz/2,0,Math.PI*2);ctx.fill();} ctx.restore(); }); if(el<DUR)requestAnimationFrame(f);else c.remove(); }
+    requestAnimationFrame(f);
+  }
+
+  init();
+})();
+</script>
