@@ -1290,14 +1290,6 @@
     var stepNum = state.history.length + 1;
     var est = stepNum + estimateRemainingFrom(state.currentNodeId);
 
-    // Mini radar (visible from question 2 onward)
-    if (state.history.length > 0) {
-      var scores = computeScores(state.history);
-      var miniWrap = el('div', { class: 'bb-mini-radar', html: buildMiniRadarSVG(scores, 120) });
-      card.appendChild(miniWrap);
-      setTimeout(function () { miniWrap.classList.add('bb-mini-radar--visible'); }, 50);
-    }
-
     card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Vraag ' + stepNum + ' van ' + est]));
     card.appendChild(el('h2', { class: 'bb-question' }, [node.question]));
     if (node.helper) card.appendChild(el('p', { class: 'bb-helper' }, [node.helper]));
