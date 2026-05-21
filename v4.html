@@ -350,17 +350,17 @@
   var DIMENSIONS = [
     { key: 'verhaal', label: 'Verhaal', icon: '\u{1F4D6}',
       question: 'Laten we beginnen! Wat is jouw verhaal? Welke inzichten of ervaringen heb jij die waardevol zijn voor een publiek?',
-      nextLabel: 'of er vraag is naar haar onderwerp vanuit bedrijven, events of organisaties' },
+      prompt: 'haar verhaal en inzichten of ervaringen die waardevol zijn voor publiek' },
     { key: 'markt', label: 'Marktvraag', icon: '\u{1F3AF}',
-      nextLabel: 'of ze al een keynote of presentatie heeft uitgewerkt met een duidelijke opbouw en kernboodschap' },
+      prompt: 'of er vraag is naar haar onderwerp vanuit bedrijven, events of organisaties' },
     { key: 'keynote', label: 'Keynote', icon: '\u{1F3A4}',
-      nextLabel: 'of ze met plezier en zelfvertrouwen op een podium kan staan' },
+      prompt: 'of ze al een keynote of presentatie heeft uitgewerkt met een duidelijke opbouw en kernboodschap' },
     { key: 'podium', label: 'Podiumkracht', icon: '⚡',
-      nextLabel: 'of ze al ervaring heeft op het podium, zoals testimonials of eerdere optredens' },
+      prompt: 'of ze met plezier en zelfvertrouwen op een podium kan staan' },
     { key: 'ervaring', label: 'Ervaring', icon: '\u{1F3C6}',
-      nextLabel: 'of ze zichtbaar en vindbaar is als spreker en bereid is daarin te investeren' },
+      prompt: 'of ze al ervaring heeft op het podium, zoals testimonials of eerdere optredens' },
     { key: 'zichtbaarheid', label: 'Zichtbaarheid', icon: '\u{1F50D}',
-      nextLabel: null }
+      prompt: 'of ze zichtbaar en vindbaar is als spreker en bereid is daarin te investeren' }
   ];
 
   var FEEDBACK = {
@@ -606,7 +606,7 @@
       body: JSON.stringify({
         mode: 'respond',
         messages: state.conversationMessages,
-        nextDimension: nextDim.nextLabel || nextDim.label
+        nextDimension: nextDim.prompt || nextDim.label
       })
     })
     .then(function (r) { return r.json(); })
