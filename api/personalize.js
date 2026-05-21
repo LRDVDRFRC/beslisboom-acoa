@@ -38,7 +38,7 @@ ${answerSummary}
 
 Uitkomst: ${outcomeLabels[outcome] || outcome}
 
-Schrijf een persoonlijke, warme analyse van maximaal 120 woorden in het Nederlands. Benoem specifiek wat ze goed doet (op basis van "Ja"-antwoorden) en waar de groeikans zit (op basis van "Nee" of onzekere antwoorden). Sluit af met een bemoedigende zin. Gebruik geen opsommingstekens, schrijf in vloeiende alinea's. Wees specifiek, niet generiek.`;
+Schrijf een persoonlijke, warme analyse van maximaal 120 woorden in het Nederlands. Benoem specifiek wat ze goed doet (op basis van "Ja"-antwoorden) en waar de groeikans zit (op basis van "Nee" of onzekere antwoorden). Sluit af met een bemoedigende zin. Gebruik geen opsommingstekens, schrijf in vloeiende alinea's. Wees specifiek, niet generiek. Gebruik geen markdown-opmaak (geen #, **, __ etc). Schrijf platte tekst.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

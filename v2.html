@@ -1502,10 +1502,13 @@
 
     // AI-enhanced text or client-side assembly
     if (state.aiText) {
-      card.appendChild(el('div', { class: 'bb-ai-badge' }, ['✨ Persoonlijke analyse']));
-      var aiPara = el('p', { style: 'color: #2c2620; margin: 0 0 20px; line-height: 1.65;' });
-      card.appendChild(aiPara);
-      typewrite(aiPara, state.aiText, 18, null);
+      var cleanAi = state.aiText.replace(/^#+\s+[^\n]*/gm, '').replace(/\*\*/g, '').replace(/__/g, '').replace(/^\s*\n/gm, '').trim();
+      if (cleanAi) {
+        card.appendChild(el('div', { class: 'bb-ai-badge' }, ['✨ Persoonlijke analyse']));
+        var aiPara = el('p', { style: 'color: #2c2620; margin: 0 0 20px; line-height: 1.65;' });
+        card.appendChild(aiPara);
+        typewrite(aiPara, cleanAi, 18, null);
+      }
     }
 
     // Standard body text
