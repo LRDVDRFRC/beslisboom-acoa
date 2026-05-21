@@ -44,7 +44,7 @@ Schrijf een persoonlijke, warme analyse van maximaal 120 woorden in het Nederlan
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': process.env.Antrkey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
