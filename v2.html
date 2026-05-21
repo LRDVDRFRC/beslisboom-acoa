@@ -221,24 +221,32 @@
   .bb-back:hover { color: var(--acoa-accent); }
 
   /* ---------- Mini radar (shown during questions) ---------- */
+  .bb-card { position: relative; }
   .bb-mini-radar {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 20px;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 80px;
+    height: 80px;
     opacity: 0;
     transform: scale(0.8);
     transition: opacity 400ms ease, transform 400ms ease;
   }
   .bb-mini-radar--visible {
-    opacity: 1;
+    opacity: 0.7;
     transform: scale(1);
+  }
+  .bb-mini-radar:hover {
+    opacity: 1;
+    transform: scale(1.15);
+    transition: opacity 150ms ease, transform 150ms ease;
   }
   .bb-mini-radar svg { width: 100%; height: 100%; }
   .bb-mini-radar .bb-radar-data {
     transition: all 500ms cubic-bezier(.2,.7,.3,1);
   }
   .bb-mini-radar-label {
-    font-size: 11px;
+    font-size: 8px;
     font-weight: 600;
     fill: var(--acoa-muted);
     text-anchor: middle;
