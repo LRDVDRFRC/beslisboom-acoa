@@ -1,0 +1,1585 @@
+<!--
+  A Cup of Ambition — Beslisboom v2 (A/B test variant)
+  =====================================================
+  Enhanced version with:
+  - Animated radar chart showing speaker-readiness dimensions
+  - Per-dimension personalized feedback (no two results are the same)
+  - "Analyzing" reveal moment with animated chart build-up
+  - Downloadable shareable result card for LinkedIn
+  - Optional AI-enhanced personalization (set AI_ENDPOINT below)
+  - Same ActiveCampaign integration as v1
+
+  AI PERSONALIZATION (optional)
+  -----------------------------
+  Set AI_ENDPOINT below to a Cloudflare Worker / serverless function URL.
+  See ai-worker.js for the worker code. When not set, the tool uses
+  rich client-side personalized text (already great — AI just adds the
+  cherry on top).
+-->
+<meta charset="UTF-8">
+<div id="beslisboom-root"></div>
+
+<style>
+  #beslisboom-root {
+    --acoa-bg: #fdf8f4;
+    --acoa-card: #ffffff;
+    --acoa-ink: #2a1411;
+    --acoa-muted: #7a6660;
+    --acoa-accent: #5c1f1a;
+    --acoa-accent-dark: #3f120e;
+    --acoa-gold: #c8923b;
+    --acoa-rose: #b89691;
+    --acoa-soft: #f5e8e4;
+    --acoa-border: #ebe0d8;
+    --acoa-shadow: 0 10px 40px rgba(42, 20, 17, 0.08);
+    --acoa-radius: 18px;
+
+    box-sizing: border-box;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 18px 64px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--acoa-ink);
+    line-height: 1.55;
+    font-size: 17px;
+  }
+  #beslisboom-root *,
+  #beslisboom-root *::before,
+  #beslisboom-root *::after { box-sizing: border-box; }
+
+  .bb-logo {
+    display: block;
+    max-width: 220px;
+    width: 60%;
+    height: auto;
+    margin: 0 auto 28px;
+  }
+
+  /* ---------- Intro ---------- */
+  .bb-intro {
+    text-align: center;
+    animation: bbFade 320ms ease both;
+  }
+  .bb-intro__photo {
+    display: block;
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    border-radius: var(--acoa-radius);
+    margin: 0 auto 24px;
+    box-shadow: var(--acoa-shadow);
+  }
+  .bb-intro__hook {
+    font-size: clamp(22px, 4vw, 28px);
+    font-weight: 800;
+    color: var(--acoa-accent);
+    margin: 8px 0 8px;
+    line-height: 1.2;
+  }
+  .bb-intro__sub {
+    color: var(--acoa-muted);
+    font-size: 17px;
+    margin: 0 0 28px;
+  }
+  .bb-intro__start {
+    appearance: none;
+    background: var(--acoa-accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    font-size: 18px;
+    border: 0;
+    border-radius: 12px;
+    padding: 18px 32px;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease;
+    margin-bottom: 36px;
+  }
+  .bb-intro__start:hover {
+    background: var(--acoa-accent-dark);
+    transform: translateY(-1px);
+  }
+
+  /* ---------- Progress ---------- */
+  .bb-progress {
+    height: 6px;
+    background: var(--acoa-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .bb-progress__bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--acoa-accent), var(--acoa-gold));
+    transition: width 400ms cubic-bezier(.2,.7,.2,1);
+  }
+
+  /* ---------- Card + transitions ---------- */
+  .bb-card {
+    background: var(--acoa-card);
+    border: 1px solid var(--acoa-border);
+    border-radius: var(--acoa-radius);
+    box-shadow: var(--acoa-shadow);
+    padding: 32px 24px;
+    animation: bbSlideIn 380ms cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes bbFade {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bbSlideIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes bbSlideOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(-30px); }
+  }
+
+  .bb-framing {
+    max-width: 760px;
+    margin: 0 auto 18px;
+    color: var(--acoa-muted);
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: center;
+    padding: 0 4px;
+  }
+
+  /* ---------- Question ---------- */
+  .bb-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--acoa-gold);
+    margin-bottom: 14px;
+  }
+  .bb-question {
+    font-size: clamp(22px, 4.4vw, 28px);
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0 0 10px;
+    color: var(--acoa-accent);
+  }
+  .bb-helper {
+    color: var(--acoa-muted);
+    font-size: 17px;
+    margin: 0 0 28px;
+  }
+  .bb-answers { display: grid; gap: 14px; }
+  .bb-answer {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #fff;
+    border: 1.5px solid var(--acoa-border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    text-align: left;
+    font: inherit;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--acoa-ink);
+    cursor: pointer;
+    transition: all 160ms ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .bb-answer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--acoa-accent);
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+  .bb-answer:hover, .bb-answer:focus-visible {
+    outline: none;
+    border-color: var(--acoa-accent);
+    color: var(--acoa-accent);
+    transform: translateY(-1px);
+    background: #fffaf7;
+  }
+  .bb-answer--selected {
+    border-color: var(--acoa-accent);
+    background: var(--acoa-soft);
+    color: var(--acoa-accent);
+    transform: scale(0.98);
+  }
+  .bb-back {
+    appearance: none;
+    background: none;
+    border: 0;
+    color: var(--acoa-muted);
+    font: inherit;
+    font-size: 14px;
+    margin-top: 18px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .bb-back:hover { color: var(--acoa-accent); }
+
+  /* ---------- Email gate ---------- */
+  .bb-gate__title {
+    font-size: clamp(22px, 3.6vw, 28px);
+    margin: 0 0 8px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .bb-gate__intro {
+    color: var(--acoa-muted);
+    margin: 0 0 24px;
+    font-size: 15px;
+  }
+  .bb-field {
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+  }
+  .bb-field label {
+    font-size: 13px; font-weight: 600; color: var(--acoa-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .bb-field input {
+    font: inherit; font-size: 17px;
+    padding: 15px 16px;
+    border: 1.5px solid var(--acoa-border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--acoa-ink);
+    transition: border-color 160ms ease;
+  }
+  .bb-field input:focus { outline: none; border-color: var(--acoa-accent); }
+  .bb-consent {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 15px; color: var(--acoa-muted); margin: 4px 0 22px;
+    line-height: 1.45;
+  }
+  .bb-consent input { margin-top: 4px; flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--acoa-accent); }
+  .bb-submit {
+    width: 100%; appearance: none;
+    background: var(--acoa-accent); color: #fff;
+    font: inherit; font-weight: 700; font-size: 16px;
+    border: 0; border-radius: 12px; padding: 16px 20px;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease;
+  }
+  .bb-submit:hover { background: var(--acoa-accent-dark); }
+  .bb-submit:disabled { opacity: 0.6; cursor: wait; }
+  .bb-error { color: #c44a4a; font-size: 14px; margin-top: 10px; min-height: 1em; }
+  .bb-privacy {
+    margin: 12px 0 0; font-size: 13px; color: var(--acoa-muted);
+    text-align: center; line-height: 1.4;
+  }
+
+  /* ---------- Analyzing screen ---------- */
+  .bb-analyzing {
+    text-align: center;
+    padding: 48px 24px;
+    animation: bbFade 320ms ease both;
+  }
+  .bb-analyzing__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--acoa-accent);
+    margin: 24px 0 12px;
+  }
+  .bb-analyzing__sub {
+    color: var(--acoa-muted);
+    font-size: 15px;
+  }
+  .bb-radar-wrap {
+    width: 280px;
+    height: 280px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .bb-radar-wrap svg { width: 100%; height: 100%; }
+
+  /* Radar data polygon animation */
+  .bb-radar-data {
+    transition: all 600ms cubic-bezier(.2,.7,.3,1);
+  }
+  .bb-radar-data--hidden {
+    opacity: 0;
+    transform: scale(0.3);
+    transform-origin: center;
+  }
+  .bb-radar-label {
+    font-size: 11px;
+    font-weight: 700;
+    fill: var(--acoa-ink);
+    text-anchor: middle;
+  }
+  .bb-radar-score {
+    font-size: 10px;
+    font-weight: 600;
+    fill: var(--acoa-gold);
+    text-anchor: middle;
+  }
+  .bb-radar-dot {
+    transition: all 600ms cubic-bezier(.2,.7,.3,1);
+  }
+
+  /* ---------- Pulse animation for analyzing dots ---------- */
+  .bb-dots { display: inline-block; }
+  .bb-dots span {
+    animation: bbDotPulse 1.4s infinite;
+    opacity: 0;
+  }
+  .bb-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .bb-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bbDotPulse {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+
+  /* ---------- Result ---------- */
+  .bb-result__badge {
+    display: inline-block;
+    background: var(--acoa-soft);
+    color: var(--acoa-accent-dark);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 16px;
+  }
+  .bb-result__score-ring {
+    width: 100px; height: 100px;
+    margin: 0 auto 20px;
+    position: relative;
+  }
+  .bb-result__score-ring svg { width: 100%; height: 100%; }
+  .bb-result__score-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--acoa-accent);
+  }
+  .bb-result__score-label {
+    text-align: center;
+    font-size: 13px;
+    color: var(--acoa-muted);
+    margin: -12px 0 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+  .bb-result__title {
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.1;
+    margin: 0 0 18px;
+    font-weight: 800;
+  }
+  .bb-result__body p { margin: 0 0 14px; color: #2c2620; }
+  .bb-result__body strong { color: var(--acoa-ink); }
+  .bb-result__body a { color: var(--acoa-accent); text-decoration: underline; }
+  .bb-result__body a:hover { color: var(--acoa-accent-dark); }
+  .bb-result__radar-section {
+    margin: 28px 0;
+    text-align: center;
+  }
+  .bb-result__radar-section .bb-radar-wrap {
+    width: 260px;
+    height: 260px;
+  }
+
+  /* ---------- Per-dimension feedback ---------- */
+  .bb-dimension {
+    display: flex;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--acoa-border);
+    animation: bbFade 400ms ease both;
+  }
+  .bb-dimension:last-child { border-bottom: 0; }
+  .bb-dimension__icon {
+    flex: 0 0 40px;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: var(--acoa-soft);
+  }
+  .bb-dimension__icon--high { background: #e8f5e9; }
+  .bb-dimension__icon--med  { background: #fff8e1; }
+  .bb-dimension__icon--low  { background: #fce4ec; }
+  .bb-dimension__text {
+    flex: 1;
+    font-size: 15px;
+    line-height: 1.5;
+    color: #2c2620;
+  }
+  .bb-dimension__name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--acoa-accent);
+    margin-bottom: 2px;
+  }
+
+  /* ---------- Typewriter ---------- */
+  .bb-typewriter {
+    border-right: 2px solid var(--acoa-accent);
+    animation: bbBlink 600ms step-end infinite;
+    white-space: pre-wrap;
+  }
+  .bb-typewriter--done { border-right-color: transparent; animation: none; }
+  @keyframes bbBlink {
+    50% { border-right-color: transparent; }
+  }
+
+  /* ---------- AI badge ---------- */
+  .bb-ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #5c1f1a, #c8923b);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  /* ---------- Share ---------- */
+  .bb-share {
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--acoa-soft);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .bb-share__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--acoa-accent);
+    margin: 0 0 12px;
+  }
+  .bb-share__btn {
+    appearance: none;
+    background: var(--acoa-accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    border: 0;
+    border-radius: 10px;
+    padding: 12px 24px;
+    cursor: pointer;
+    margin: 0 6px;
+    transition: background 120ms ease;
+  }
+  .bb-share__btn:hover { background: var(--acoa-accent-dark); }
+  .bb-share__btn--ghost {
+    background: transparent;
+    color: var(--acoa-accent);
+    border: 1.5px solid var(--acoa-accent);
+  }
+  .bb-share__btn--ghost:hover { background: rgba(92,31,26,0.06); }
+  .bb-share__preview {
+    margin-top: 14px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--acoa-shadow);
+  }
+  .bb-share__preview canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ---------- CTAs ---------- */
+  .bb-result__lead {
+    background: var(--acoa-soft);
+    border-left: 3px solid var(--acoa-gold);
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin: 18px 0 4px;
+    font-size: 16px;
+  }
+  .bb-result__lead strong { color: var(--acoa-accent); }
+  .bb-result__cta {
+    display: inline-block;
+    background: var(--acoa-accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-weight: 700;
+    margin-top: 18px;
+    margin-right: 8px;
+    transition: background 120ms ease;
+  }
+  .bb-result__cta:hover { background: var(--acoa-accent-dark); }
+  .bb-result__cta--ghost {
+    background: transparent;
+    color: var(--acoa-accent-dark);
+    border: 1.5px solid var(--acoa-accent);
+  }
+  .bb-result__cta--ghost:hover { background: var(--acoa-soft); }
+  .bb-result__list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    color: #2c2620;
+  }
+  .bb-result__list li { margin-bottom: 12px; line-height: 1.55; }
+  .bb-result__list a {
+    color: var(--acoa-accent);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1.5px solid var(--acoa-soft);
+    transition: border-color 120ms ease;
+  }
+  .bb-result__list a:hover { border-bottom-color: var(--acoa-accent); }
+  .bb-confetti {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 9999;
+    width: 100%; height: 100%;
+  }
+  .bb-restart {
+    display: block;
+    margin-top: 28px;
+    background: none; border: 0;
+    color: var(--acoa-muted);
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit; font-size: 14px;
+  }
+
+  @media (max-width: 480px) {
+    #beslisboom-root { padding: 18px 14px 56px; }
+    .bb-card { padding: 26px 20px; }
+    .bb-logo { max-width: 180px; margin-bottom: 22px; }
+    .bb-question { font-size: 22px; }
+    .bb-helper { font-size: 16px; }
+    .bb-answer { font-size: 17px; padding: 18px 18px; }
+    .bb-result__title { font-size: 28px; }
+    .bb-gate__title { font-size: 22px; }
+    .bb-result__cta { display: block; text-align: center; margin: 12px 0 0; }
+    .bb-intro__start { width: 100%; padding: 18px 24px; font-size: 17px; }
+    .bb-intro__photo { max-width: 240px; margin-bottom: 18px; }
+    .bb-framing { font-size: 15px; }
+    .bb-share__btn { display: block; width: 100%; margin: 8px 0; }
+    .bb-radar-wrap { width: 240px; height: 240px; }
+    .bb-result__radar-section .bb-radar-wrap { width: 220px; height: 220px; }
+  }
+</style>
+
+<script>
+(function () {
+  // ====================================================================
+  // CONFIG
+  // ====================================================================
+  var AC_ENDPOINT = 'https://acupofambition.activehosted.com/proc.php?jsonp=true';
+  var AC_FORM = {
+    u: '49', f: '49', s: '', c: '0', m: '0', act: 'sub', v: '2',
+    or: '8c06a683-930f-4d72-8483-958921b8188b'
+  };
+  var AC_OUTCOME_FIELD = 'field[184]';
+  var REQUIRE_EMAIL = true;
+
+  // Optional: set this to a Cloudflare Worker URL for AI-enhanced results.
+  // See ai-worker.js. Leave empty to use client-side personalization.
+  var AI_ENDPOINT = '';
+
+  // ====================================================================
+  // Decision tree (same structure as v1)
+  // ====================================================================
+  var TREE = {
+    start: 'q1',
+    nodes: {
+      q1: {
+        question: 'Heb je inzichten of ervaringen die waardevol zijn voor publiek?',
+        helper: 'Denk aan kennis, ervaringen of een visie waar anderen iets aan hebben.',
+        dimension: 'verhaal',
+        answers: [
+          { label: 'Ja',                     tone: 'yes',   next: 'q2' },
+          { label: 'Dat weet ik niet zeker',  tone: 'maybe', next: 'q_explore' }
+        ]
+      },
+      q2: {
+        question: 'Is er vraag naar jouw onderwerp?',
+        helper: 'Wordt er door bedrijven, events of organisaties actief naar dit thema gezocht?',
+        dimension: 'markt',
+        answers: [
+          { label: 'Ja',                     tone: 'yes',   next: 'q3' },
+          { label: 'Dat weet ik niet zeker',  tone: 'maybe', next: 'q_explore' }
+        ]
+      },
+      q3: {
+        question: 'Heb je een keynote of presentatie uitgewerkt?',
+        helper: 'Een verhaal met een duidelijke opbouw, kernboodschap en take-aways.',
+        dimension: 'keynote',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q4' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q4: {
+        question: 'Kun je dit met plezier en zelfvertrouwen overbrengen?',
+        helper: 'Sta je krachtig op het podium en geniet je van het moment?',
+        dimension: 'podium',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q5' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q5: {
+        question: 'Heb je ervaring op het podium en bewijs van waarde?',
+        helper: 'Testimonials, beeldmateriaal van eerdere keynotes of betaalde optredens.',
+        dimension: 'ervaring',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q6' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q6: {
+        question: 'Ben je zichtbaar en vindbaar als spreker?',
+        helper: 'En ben je consistent bereid om hierin te blijven investeren?',
+        dimension: 'zichtbaarheid',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'result:ready' },
+          { label: 'Nee', tone: 'no',  next: 'q_invest' }
+        ]
+      },
+      q_explore: {
+        question: 'Ben je bereid om te onderzoeken wat jouw unieke verhaal is?',
+        helper: 'We hebben allemaal waardevolle kennis waar we anderen mee vooruit kunnen helpen — vaak is het alleen nog niet scherp.',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'q_invest' },
+          { label: 'Nee', tone: 'no',  next: 'result:not_ready' }
+        ]
+      },
+      q_invest: {
+        question: 'Ben je bereid om hierin te investeren?',
+        helper: 'In tijd, in jezelf, en eventueel in begeleiding om de stap te zetten.',
+        answers: [
+          { label: 'Ja',  tone: 'yes', next: 'result:work' },
+          { label: 'Nee', tone: 'no',  next: 'result:not_ready' }
+        ]
+      }
+    }
+  };
+
+  // ====================================================================
+  // Dimensions + feedback bank
+  // ====================================================================
+  var DIMENSIONS = [
+    { key: 'verhaal',       label: 'Verhaal',       icon: '📖' },
+    { key: 'markt',         label: 'Marktvraag',    icon: '🎯' },
+    { key: 'keynote',       label: 'Keynote',       icon: '🎤' },
+    { key: 'podium',        label: 'Podiumkracht',  icon: '⚡' },
+    { key: 'ervaring',      label: 'Ervaring',      icon: '🏆' },
+    { key: 'zichtbaarheid', label: 'Zichtbaarheid', icon: '🔍' }
+  ];
+
+  var FEEDBACK = {
+    verhaal: {
+      yes: 'Je hebt waardevolle inzichten en ervaringen om te delen. Dat is het fundament van iedere goede spreker.',
+      maybe: 'Je twijfelt of je iets waardevols te vertellen hebt — dat is normaler dan je denkt. Veel sterke sprekers ontdekken hun unieke invalshoek pas wanneer ze er bewust mee aan de slag gaan.',
+      none: 'Het ontdekken van jouw unieke verhaal is de allereerste stap op weg naar het podium.'
+    },
+    markt: {
+      yes: 'Er is vraag naar jouw onderwerp — dat is een sterk fundament. Het betekent dat organisaties bereid zijn te investeren in wat jij te bieden hebt.',
+      maybe: 'Je weet nog niet zeker of er vraag is naar jouw onderwerp. Dat is goed om te onderzoeken: positionering begint bij weten welk publiek op jouw verhaal zit te wachten.',
+      none: 'Of er marktvraag is naar jouw onderwerp is een belangrijke vraag om te beantwoorden. Zonder publiek geen podium.'
+    },
+    keynote: {
+      yes: 'Je hebt een uitgewerkte keynote — dat geeft je een echte voorsprong. Een goed verhaal met een duidelijke opbouw is waar het verschil wordt gemaakt.',
+      no: 'Je hebt nog geen keynote uitgewerkt. Dat is de plek waar veel potentiële sprekers blijven steken, maar ook waar de magie begint.',
+      none: 'Een sterke keynote bouwen — met een duidelijke opbouw, kernboodschap en take-aways — is een cruciale stap die nog voor je ligt.'
+    },
+    podium: {
+      yes: 'Je staat met plezier en zelfvertrouwen op het podium — dat is goud waard. Het publiek voelt het verschil tussen iemand die het leuk vindt en iemand die het moet.',
+      no: 'Podiumangst of onzekerheid is heel normaal, en goed te overwinnen. De allerbeste sprekers hebben dit ook moeten leren — het is een vaardigheid, geen talent.',
+      none: 'Zelfvertrouwen op het podium is iets dat groeit met oefening en de juiste begeleiding.'
+    },
+    ervaring: {
+      yes: 'Je hebt podiumervaring en bewijs van waarde — denk aan testimonials, beeldmateriaal of betaalde optredens. Dat maakt je geloofwaardig voor opdrachtgevers.',
+      no: 'Podiumervaring en bewijs van waarde (zoals testimonials of video) zijn essentieel om opdrachtgevers te overtuigen. Dit is een investering die zich terugbetaalt.',
+      none: 'Ervaring opdoen en bewijs verzamelen is een stap die je nog kunt zetten zodra je verhaal en vaardigheden op orde zijn.'
+    },
+    zichtbaarheid: {
+      yes: 'Je bent zichtbaar en vindbaar als spreker — de laatste puzzelstukjes zijn op hun plek. Consistent investeren in zichtbaarheid is wat betaalde boekingen oplevert.',
+      no: 'Zichtbaarheid en vindbaarheid zijn vaak de ontbrekende schakel. Je kunt nog zo goed zijn — als niemand je kan vinden, word je niet geboekt.',
+      none: 'Zichtbaarheid als spreker is iets om strategisch op te bouwen zodra je fundament staat.'
+    }
+  };
+
+  var RESULT_DEFS = {
+    ready: {
+      tag: 'klaar',
+      badge: 'Goed nieuws',
+      title: 'Je bent er klaar voor! 🎤',
+      body: [
+        'Jouw verhaal staat, je staat met plezier op het podium en je investeert consistent in je zichtbaarheid.',
+        'Het is nodig dat veel meer vrouwen het podium gaan beklimmen — welk podium dat ook is! Daarom runnen wij — naast A Cup of Ambition — ook <a href="https://www.vrouwelijkespreker.nu" target="_blank" rel="noopener"><strong>vrouwelijkespreker.nu</strong></a> en <a href="https://www.vrouwelijkedagvoorzitter.nu" target="_blank" rel="noopener"><strong>vrouwelijkedagvoorzitter.nu</strong></a>.',
+        'Voor <strong>€199,- per jaar (excl. btw)</strong> plaatsen we jouw foto en een korte omschrijving op de homepagina, en krijg je een unieke URL met jouw sprekersprofiel.'
+      ],
+      ctas: [
+        { label: 'Aanmelden als spreker', href: 'https://www.vrouwelijkespreker.nu/aanmelden-als-spreker', primary: true },
+        { label: 'Terug naar A Cup of Ambition', href: 'https://www.acupofambition.nl', primary: false }
+      ]
+    },
+    work: {
+      tag: 'werk-aan-de-winkel',
+      badge: 'Bijna zover',
+      title: "Let’s go — er is werk aan de winkel.",
+      body: [
+        'Jij hebt de motivatie en ambitie om serieus met je sprekersskills en positionering aan de slag te gaan. Dat is super, want <strong>MORE WOMEN ON STAGE</strong> bereiken we niet zomaar.',
+        'Hieronder zie je per dimensie waar je staat en wat je eerste stap is. Wij van A Cup of Ambition helpen je graag verder:'
+      ],
+      list: [
+        '<strong>Doe mee met de Sprekersopleiding</strong> — werk aan jouw sprekerskills en zelfvertrouwen én ontdek waar jouw unieke verhaal zit. <a href="https://www.acupofambition.nl/opleiding" target="_blank" rel="noopener">Meer info →</a>',
+        '<strong>In het LEVEL UP traject</strong> leren wij je alle facetten om de stap naar betaald spreker te maken. <a href="https://www.acupofambition.nl/kickstart-betaald-spreken" target="_blank" rel="noopener">Meer info →</a>',
+        '<strong>Schakel ons in voor een 1:1 coachtraject</strong> — bouw met ons je killer keynote. <a href="https://www.acupofambition.nl/11-coaching" target="_blank" rel="noopener">Meer info →</a>'
+      ],
+      ctas: [
+        { label: 'Bekijk de opleidingen', href: 'https://www.acupofambition.nl', primary: true }
+      ]
+    },
+    not_ready: {
+      tag: 'nog-niet-klaar',
+      badge: 'Nog even geduld',
+      title: 'Je bent er nog niet klaar voor.',
+      body: [
+        'Betaald spreker word én ben je niet zomaar. Spreken en presenteren is een vak — professionele sprekers stoppen hun ziel en zaligheid in hun keynotes en positionering.',
+        'Jij gaf aan dat je hier nu nog niet in wilt investeren. Onze eerlijke mening? <strong>Dat is wel nodig.</strong>',
+        'Mocht je later toch de stap willen zetten: wij staan klaar om je daarbij te helpen.'
+      ],
+      list: [
+        '<strong>Doe mee met de Sprekersopleiding</strong> — werk aan jouw sprekerskills en zelfvertrouwen. <a href="https://www.acupofambition.nl/opleiding" target="_blank" rel="noopener">Meer info →</a>',
+        '<strong>In het LEVEL UP traject</strong> leren wij je alle facetten om de stap naar betaald spreker te maken. <a href="https://www.acupofambition.nl/kickstart-betaald-spreken" target="_blank" rel="noopener">Meer info →</a>',
+        '<strong>Schakel ons in voor een 1:1 coachtraject</strong> — bouw met ons je killer keynote. <a href="https://www.acupofambition.nl/11-coaching" target="_blank" rel="noopener">Meer info →</a>'
+      ],
+      ctas: [
+        { label: 'Ontdek A Cup of Ambition', href: 'https://www.acupofambition.nl/alle-trainingen1', primary: true }
+      ]
+    }
+  };
+
+  // Tailored CTAs (same as v1)
+  var GAP_CTAS = {
+    q1:        { lead: 'Jouw eerste stap: ontdekken wat jouw unieke verhaal is.',       label: 'Bekijk de Sprekersopleiding',    href: 'https://www.acupofambition.nl/opleiding' },
+    q2:        { lead: 'Jouw eerste stap: scherp krijgen of er vraag is naar jouw onderwerp.', label: 'Bekijk de Sprekersopleiding', href: 'https://www.acupofambition.nl/opleiding' },
+    q3:        { lead: 'Jouw eerste stap: een keynote bouwen waar je trots op bent.',   label: 'Bouw 1:1 jouw killer keynote',   href: 'https://www.acupofambition.nl/11-coaching' },
+    q4:        { lead: 'Jouw eerste stap: zelfvertrouwen en plezier op het podium opbouwen.', label: 'Bekijk de Sprekersopleiding', href: 'https://www.acupofambition.nl/opleiding' },
+    q5:        { lead: 'Jouw eerste stap: ervaring opdoen en bewijs van waarde verzamelen.',   label: 'Bekijk het LEVEL UP traject',  href: 'https://www.acupofambition.nl/alle-trainingen1' },
+    q6:        { lead: 'Jouw eerste stap: consistent zichtbaar worden als spreker.',     label: 'Bekijk het LEVEL UP traject',    href: 'https://www.acupofambition.nl/alle-trainingen1' },
+    q_explore: { lead: 'Jouw eerste stap: onderzoeken wat jouw unieke verhaal is.',      label: 'Bekijk de Sprekersopleiding',    href: 'https://www.acupofambition.nl/opleiding' }
+  };
+
+  // ====================================================================
+  // Scoring engine
+  // ====================================================================
+  function computeScores(history) {
+    var scores = {};
+    DIMENSIONS.forEach(function (d) { scores[d.key] = { value: 15, tone: 'none' }; });
+
+    history.forEach(function (h) {
+      var node = TREE.nodes[h.nodeId];
+      if (!node || !node.dimension) return;
+      var answer = node.answers.find(function (a) { return a.label === h.answerLabel; });
+      if (!answer) return;
+      var tone = answer.tone;
+      var val = tone === 'yes' ? 100 : tone === 'maybe' ? 50 : 25;
+      scores[node.dimension] = { value: val, tone: tone };
+    });
+
+    return scores;
+  }
+
+  function overallScore(scores) {
+    var total = 0, count = 0;
+    DIMENSIONS.forEach(function (d) {
+      total += scores[d.key].value;
+      count++;
+    });
+    return Math.round(total / count);
+  }
+
+  // ====================================================================
+  // Radar chart (SVG)
+  // ====================================================================
+  function buildRadarSVG(scores, size, animated) {
+    var cx = size / 2, cy = size / 2;
+    var r = size * 0.36;
+    var n = DIMENSIONS.length;
+    var labelR = r + 24;
+
+    function polarToCart(i, radius) {
+      var angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      return {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle)
+      };
+    }
+
+    var svg = '<svg viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg">';
+
+    // Grid rings
+    [0.25, 0.5, 0.75, 1].forEach(function (pct) {
+      var points = [];
+      for (var i = 0; i < n; i++) {
+        var p = polarToCart(i, r * pct);
+        points.push(p.x.toFixed(1) + ',' + p.y.toFixed(1));
+      }
+      svg += '<polygon points="' + points.join(' ') + '" fill="none" stroke="#ebe0d8" stroke-width="1" opacity="0.6"/>';
+    });
+
+    // Axis lines
+    for (var i = 0; i < n; i++) {
+      var p = polarToCart(i, r);
+      svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x.toFixed(1) + '" y2="' + p.y.toFixed(1) + '" stroke="#ebe0d8" stroke-width="1" opacity="0.4"/>';
+    }
+
+    // Data polygon
+    var dataPoints = [];
+    var dotsSVG = '';
+    DIMENSIONS.forEach(function (d, i) {
+      var val = scores[d.key].value / 100;
+      var p = polarToCart(i, r * Math.max(val, 0.08));
+      dataPoints.push(p.x.toFixed(1) + ',' + p.y.toFixed(1));
+      dotsSVG += '<circle class="bb-radar-dot" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#5c1f1a" stroke="#fff" stroke-width="2"/>';
+    });
+    var cls = animated ? 'bb-radar-data bb-radar-data--hidden' : 'bb-radar-data';
+    svg += '<polygon class="' + cls + '" points="' + dataPoints.join(' ') + '" fill="rgba(92,31,26,0.15)" stroke="#5c1f1a" stroke-width="2.5" stroke-linejoin="round"/>';
+    svg += dotsSVG;
+
+    // Labels
+    DIMENSIONS.forEach(function (d, i) {
+      var p = polarToCart(i, labelR);
+      var scoreVal = scores[d.key].value;
+      svg += '<text class="bb-radar-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - 6).toFixed(1) + '">' + d.label + '</text>';
+      svg += '<text class="bb-radar-score" x="' + p.x.toFixed(1) + '" y="' + (p.y + 8).toFixed(1) + '">' + scoreVal + '%</text>';
+    });
+
+    svg += '</svg>';
+    return svg;
+  }
+
+  // ====================================================================
+  // Shareable card (Canvas)
+  // ====================================================================
+  function generateShareCard(name, scores, outcomeKey, callback) {
+    var W = 1200, H = 630;
+    var canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    var ctx = canvas.getContext('2d');
+
+    // Background gradient
+    var grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#fdf8f4');
+    grad.addColorStop(1, '#f5e8e4');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Accent bar
+    ctx.fillStyle = '#5c1f1a';
+    ctx.fillRect(0, 0, W, 6);
+
+    // Title
+    ctx.fillStyle = '#5c1f1a';
+    ctx.font = 'bold 42px Helvetica Neue, Helvetica, Arial, sans-serif';
+    ctx.fillText('Speaker Readiness Score', 60, 80);
+
+    // Name
+    ctx.fillStyle = '#2a1411';
+    ctx.font = 'bold 32px Helvetica Neue, Helvetica, Arial, sans-serif';
+    ctx.fillText(name || 'Jouw score', 60, 130);
+
+    // Overall score circle
+    var score = overallScore(scores);
+    var scoreCX = 180, scoreCY = 280, scoreR = 80;
+    ctx.beginPath();
+    ctx.arc(scoreCX, scoreCY, scoreR, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5e8e4';
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#ebe0d8';
+    ctx.stroke();
+
+    // Score arc
+    ctx.beginPath();
+    ctx.arc(scoreCX, scoreCY, scoreR, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * score / 100));
+    ctx.strokeStyle = '#5c1f1a';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Score text
+    ctx.fillStyle = '#5c1f1a';
+    ctx.font = 'bold 48px Helvetica Neue, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(score + '%', scoreCX, scoreCY + 16);
+    ctx.font = '14px Helvetica Neue, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#7a6660';
+    ctx.fillText('READINESS', scoreCX, scoreCY + 40);
+    ctx.textAlign = 'left';
+
+    // Dimension bars
+    var barX = 360, barY = 180, barW = 480, barH = 22, barGap = 52;
+    DIMENSIONS.forEach(function (d, i) {
+      var val = scores[d.key].value;
+      var y = barY + i * barGap;
+
+      ctx.fillStyle = '#7a6660';
+      ctx.font = '16px Helvetica Neue, Helvetica, Arial, sans-serif';
+      ctx.fillText(d.icon + ' ' + d.label, barX, y - 6);
+
+      ctx.fillStyle = val + '%';
+      ctx.font = 'bold 16px Helvetica Neue, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = '#5c1f1a';
+      ctx.textAlign = 'right';
+      ctx.fillText(val + '%', barX + barW + 50, y - 6);
+      ctx.textAlign = 'left';
+
+      // Bar bg
+      ctx.fillStyle = '#ebe0d8';
+      roundRect(ctx, barX, y, barW, barH, 6);
+      ctx.fill();
+
+      // Bar fill
+      var fillColor = val >= 75 ? '#2f9e6b' : val >= 50 ? '#c8923b' : '#c44a4a';
+      ctx.fillStyle = fillColor;
+      roundRect(ctx, barX, y, barW * (val / 100), barH, 6);
+      ctx.fill();
+    });
+
+    // Footer
+    ctx.fillStyle = '#5c1f1a';
+    ctx.fillRect(0, H - 60, W, 60);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Helvetica Neue, Helvetica, Arial, sans-serif';
+    ctx.fillText('A CUP OF AMBITION', 60, H - 24);
+    ctx.font = '16px Helvetica Neue, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.textAlign = 'right';
+    ctx.fillText('acupofambition.nl/beslisboom', W - 60, H - 24);
+    ctx.textAlign = 'left';
+
+    callback(canvas);
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ====================================================================
+  // AI personalization (optional)
+  // ====================================================================
+  function fetchAIText(history, outcomeKey, name, callback) {
+    if (!AI_ENDPOINT) { callback(null); return; }
+
+    var payload = {
+      answers: history.map(function (h) { return { nodeId: h.nodeId, answer: h.answerLabel }; }),
+      outcome: outcomeKey,
+      name: name || ''
+    };
+
+    fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('AI endpoint returned ' + res.status);
+      return res.json();
+    }).then(function (data) {
+      callback(data.text || null);
+    }).catch(function (err) {
+      console.warn('[beslisboom-v2] AI personalization failed, using client-side:', err);
+      callback(null);
+    });
+  }
+
+  // ====================================================================
+  // Client-side personalized text assembly
+  // ====================================================================
+  function assembleFeedback(scores, name) {
+    var parts = [];
+    if (name) parts.push(name + ', hier is jouw persoonlijke analyse:');
+
+    DIMENSIONS.forEach(function (d) {
+      var s = scores[d.key];
+      var fb = FEEDBACK[d.key];
+      var text = fb[s.tone] || fb.none || '';
+      if (text) parts.push(text);
+    });
+
+    return parts;
+  }
+
+  // ====================================================================
+  // Typewriter effect
+  // ====================================================================
+  function typewrite(element, text, speed, callback) {
+    var i = 0;
+    element.classList.remove('bb-typewriter--done');
+    element.classList.add('bb-typewriter');
+    element.textContent = '';
+
+    function tick() {
+      if (i < text.length) {
+        element.textContent += text[i];
+        i++;
+        setTimeout(tick, speed);
+      } else {
+        element.classList.add('bb-typewriter--done');
+        if (callback) callback();
+      }
+    }
+    tick();
+  }
+
+  // ====================================================================
+  // State
+  // ====================================================================
+  var root = document.getElementById('beslisboom-root');
+  var state = {
+    started: false,
+    history: [],
+    currentNodeId: TREE.start,
+    pendingResult: null,
+    finalResult: null,
+    analyzing: false,
+    userName: '',
+    aiText: null,
+    shareCanvas: null
+  };
+
+  function totalDepth() { return 7; }
+
+  function progressPct() {
+    if (state.finalResult || state.analyzing) return 100;
+    if (state.pendingResult) return 95;
+    return Math.min(90, (state.history.length / totalDepth()) * 90);
+  }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') node.className = attrs[k];
+      else if (k === 'html') node.innerHTML = attrs[k];
+      else if (k.indexOf('on') === 0) node.addEventListener(k.slice(2), attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) {
+      if (c == null) return;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  // ====================================================================
+  // Render
+  // ====================================================================
+  function render() {
+    root.innerHTML = '';
+    if (!state.started) { renderIntro(); return; }
+
+    root.appendChild(el('img', { class: 'bb-logo', src: 'logo.jpg', alt: 'A Cup of Ambition' }));
+
+    var progress = el('div', { class: 'bb-progress' }, [
+      el('div', { class: 'bb-progress__bar', style: 'width:' + progressPct() + '%' })
+    ]);
+    root.appendChild(progress);
+
+    if (!state.finalResult && !state.pendingResult && !state.analyzing && state.history.length === 0) {
+      root.appendChild(el('p', { class: 'bb-framing', html:
+        'Bij A Cup of Ambition vertegenwoordigen we vrouwelijke sprekers en dagvoorzitters &eacute;n geven we trainingen om vrouwen met meer plezier en zelfvertrouwen te leren presenteren. Veel mensen willen de stap maken naar betaald spreker. Tijdens deze test ontdekken we of jij klaar bent om die stap te maken.'
+      }));
+    }
+
+    if (state.analyzing) {
+      renderAnalyzing();
+    } else {
+      var card = el('div', { class: 'bb-card' });
+      if (state.finalResult) renderResult(card);
+      else if (state.pendingResult) renderEmailGate(card);
+      else renderQuestion(card);
+      root.appendChild(card);
+    }
+  }
+
+  function renderIntro() {
+    var wrap = el('div', { class: 'bb-intro' });
+    wrap.appendChild(el('img', {
+      class: 'bb-intro__photo', src: 'header.jpg',
+      alt: 'Annick en Britt — Team A Cup of Ambition'
+    }));
+    wrap.appendChild(el('p', { class: 'bb-intro__hook' }, ['MORE WOMEN ON STAGE, ook jij!']));
+    wrap.appendChild(el('p', { class: 'bb-intro__sub' }, ['Ben jij er klaar voor om als betaald spreker geboekt te worden?']));
+    wrap.appendChild(el('button', {
+      class: 'bb-intro__start', type: 'button',
+      onclick: function () {
+        state.started = true;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, ['Doe de test!']));
+    root.appendChild(wrap);
+  }
+
+  function estimateRemainingFrom(nodeId) {
+    var depth = 0, current = TREE.nodes[nodeId];
+    while (current) {
+      var next = current.answers[0].next;
+      if (typeof next !== 'string' || next.indexOf('result:') === 0) break;
+      depth++;
+      if (depth > 10) break;
+      current = TREE.nodes[next];
+    }
+    return depth;
+  }
+
+  function renderQuestion(card) {
+    var node = TREE.nodes[state.currentNodeId];
+    var stepNum = state.history.length + 1;
+    var est = stepNum + estimateRemainingFrom(state.currentNodeId);
+
+    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['Vraag ' + stepNum + ' van ' + est]));
+    card.appendChild(el('h2', { class: 'bb-question' }, [node.question]));
+    if (node.helper) card.appendChild(el('p', { class: 'bb-helper' }, [node.helper]));
+
+    var answers = el('div', { class: 'bb-answers' });
+    node.answers.forEach(function (a) {
+      answers.appendChild(el('button', {
+        class: 'bb-answer', type: 'button',
+        onclick: function (e) {
+          e.currentTarget.classList.add('bb-answer--selected');
+          setTimeout(function () { choose(a); }, 180);
+        }
+      }, [a.label]));
+    });
+    card.appendChild(answers);
+
+    if (state.history.length > 0) {
+      card.appendChild(el('button', {
+        class: 'bb-back', type: 'button', onclick: goBack
+      }, ['← Vorige vraag']));
+    }
+  }
+
+  function renderEmailGate(card) {
+    if (!REQUIRE_EMAIL) {
+      state.analyzing = true;
+      state.pendingResult = state.pendingResult;
+      render();
+      startAnalyzingSequence();
+      return;
+    }
+
+    card.appendChild(el('div', { class: 'bb-eyebrow' }, ['✓ Jouw uitslag staat klaar']));
+    card.appendChild(el('h2', { class: 'bb-gate__title' }, ['Waar mogen we ’m naartoe sturen?']));
+    card.appendChild(el('p', { class: 'bb-gate__intro' }, [
+      'Vul je naam en e-mailadres in — je ziet direct je persoonlijke analyse én ontvangt een mailtje met passende vervolgstappen.'
+    ]));
+
+    var form = el('form', { class: 'bb-form', onsubmit: function (e) { e.preventDefault(); submitEmail(form); } });
+    form.appendChild(el('div', { class: 'bb-field' }, [
+      el('label', { for: 'bb-name' }, ['Naam']),
+      el('input', { type: 'text', id: 'bb-name', name: 'name', required: 'required', autocomplete: 'name', placeholder: 'Jouw naam' })
+    ]));
+    form.appendChild(el('div', { class: 'bb-field' }, [
+      el('label', { for: 'bb-email' }, ['E-mailadres']),
+      el('input', { type: 'email', id: 'bb-email', name: 'email', required: 'required', autocomplete: 'email', placeholder: 'jij@voorbeeld.nl' })
+    ]));
+    form.appendChild(el('label', { class: 'bb-consent' }, [
+      el('input', { type: 'checkbox', id: 'bb-consent', name: 'newsletter_optin' }),
+      el('span', null, ['Ja, ik ontvang graag de nieuwsbrief van A Cup of Ambition. (Optioneel — afmelden kan altijd.)'])
+    ]));
+    form.appendChild(el('button', { class: 'bb-submit', type: 'submit' }, ['Toon mijn persoonlijke analyse']));
+    form.appendChild(el('p', { class: 'bb-privacy' }, ['🔒 We sturen alleen jouw uitslag — geen spam, je e-mailadres blijft bij ons.']));
+    form.appendChild(el('div', { class: 'bb-error', id: 'bb-error' }));
+    card.appendChild(form);
+
+    card.appendChild(el('button', {
+      class: 'bb-back', type: 'button',
+      onclick: function () {
+        var last = state.history.pop();
+        if (last) { state.currentNodeId = last.nodeId; state.pendingResult = null; render(); }
+      }
+    }, ['← Vorige vraag']));
+  }
+
+  // ====================================================================
+  // Analyzing screen (the "wow" transition)
+  // ====================================================================
+  function renderAnalyzing() {
+    var scores = computeScores(state.history);
+    var wrap = el('div', { class: 'bb-analyzing' });
+
+    wrap.appendChild(el('div', {
+      class: 'bb-radar-wrap',
+      html: buildRadarSVG(scores, 280, true)
+    }));
+    wrap.appendChild(el('h3', { class: 'bb-analyzing__title' }, [
+      'We analyseren je antwoorden'
+    ]));
+    wrap.appendChild(el('p', {
+      class: 'bb-analyzing__sub',
+      html: 'Even geduld<span class="bb-dots"><span>.</span><span>.</span><span>.</span></span>'
+    }));
+
+    root.appendChild(wrap);
+
+    // Animate radar in after a beat
+    setTimeout(function () {
+      var poly = root.querySelector('.bb-radar-data');
+      if (poly) poly.classList.remove('bb-radar-data--hidden');
+    }, 300);
+  }
+
+  function startAnalyzingSequence() {
+    var scores = computeScores(state.history);
+    var outcomeKey = state.pendingResult;
+    var minDelay = 2400;
+    var startTime = Date.now();
+    var aiDone = false;
+    var aiText = null;
+
+    // Fire AI request in parallel (if configured)
+    fetchAIText(state.history, outcomeKey, state.userName, function (text) {
+      aiText = text;
+      aiDone = true;
+      tryFinish();
+    });
+
+    // If no AI endpoint, mark as done immediately
+    if (!AI_ENDPOINT) { aiDone = true; }
+
+    function tryFinish() {
+      var elapsed = Date.now() - startTime;
+      var remaining = Math.max(0, minDelay - elapsed);
+
+      setTimeout(function () {
+        state.aiText = aiText;
+        state.finalResult = outcomeKey;
+        state.pendingResult = null;
+        state.analyzing = false;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (outcomeKey === 'ready') setTimeout(fireConfetti, 200);
+      }, remaining);
+    }
+
+    // Fallback: don't wait for AI forever
+    setTimeout(function () {
+      if (!aiDone) { aiDone = true; tryFinish(); }
+    }, 6000);
+
+    if (!AI_ENDPOINT) tryFinish();
+  }
+
+  // ====================================================================
+  // Result screen
+  // ====================================================================
+  function renderResult(card) {
+    var key = state.finalResult;
+    var r = RESULT_DEFS[key];
+    var scores = computeScores(state.history);
+    var score = overallScore(scores);
+
+    card.appendChild(el('div', { class: 'bb-result__badge' }, [r.badge]));
+
+    // Score ring
+    var ringWrap = el('div', { class: 'bb-result__score-ring' });
+    var circumference = 2 * Math.PI * 42;
+    var dashOffset = circumference - (circumference * score / 100);
+    ringWrap.innerHTML = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="#ebe0d8" stroke-width="8"/>' +
+      '<circle cx="50" cy="50" r="42" fill="none" stroke="#5c1f1a" stroke-width="8" stroke-linecap="round" ' +
+      'stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + dashOffset.toFixed(1) + '" ' +
+      'transform="rotate(-90 50 50)" style="transition: stroke-dashoffset 1s cubic-bezier(.2,.7,.3,1)"/></svg>';
+    var scoreNum = el('div', { class: 'bb-result__score-num' }, [score + '%']);
+    ringWrap.appendChild(scoreNum);
+    card.appendChild(ringWrap);
+    card.appendChild(el('div', { class: 'bb-result__score-label' }, ['Speaker Readiness Score']));
+
+    card.appendChild(el('h2', { class: 'bb-result__title' }, [r.title]));
+
+    // AI-enhanced text or client-side assembly
+    if (state.aiText) {
+      card.appendChild(el('div', { class: 'bb-ai-badge' }, ['✨ Persoonlijke analyse']));
+      var aiPara = el('p', { style: 'color: #2c2620; margin: 0 0 20px; line-height: 1.65;' });
+      card.appendChild(aiPara);
+      typewrite(aiPara, state.aiText, 18, null);
+    }
+
+    // Standard body text
+    var body = el('div', { class: 'bb-result__body' });
+    r.body.forEach(function (p) { body.appendChild(el('p', { html: p })); });
+
+    // Tailored lead for "work" outcome
+    var ctasToShow = r.ctas;
+    if (key === 'work') {
+      var firstGap = null;
+      for (var i = 0; i < state.history.length; i++) {
+        if (state.history[i].answerLabel !== 'Ja') { firstGap = state.history[i].nodeId; break; }
+      }
+      var match = firstGap && GAP_CTAS[firstGap];
+      if (match) {
+        body.appendChild(el('p', { class: 'bb-result__lead', html: '<strong>' + match.lead + '</strong>' }));
+        ctasToShow = [
+          { label: match.label, href: match.href, primary: true },
+          { label: 'Alle opleidingen bekijken', href: 'https://www.acupofambition.nl/alle-trainingen1', primary: false }
+        ];
+      }
+    }
+
+    if (r.list) {
+      var ul = el('ul', { class: 'bb-result__list' });
+      r.list.forEach(function (li) { ul.appendChild(el('li', { html: li })); });
+      body.appendChild(ul);
+    }
+    card.appendChild(body);
+
+    // Radar chart section
+    var radarSection = el('div', { class: 'bb-result__radar-section' });
+    radarSection.appendChild(el('div', {
+      class: 'bb-radar-wrap',
+      html: buildRadarSVG(scores, 260, false)
+    }));
+    card.appendChild(radarSection);
+
+    // Per-dimension feedback
+    var feedbackWrap = el('div', { style: 'margin: 20px 0;' });
+    var feedbackParts = assembleFeedback(scores, null);
+    DIMENSIONS.forEach(function (d, i) {
+      var s = scores[d.key];
+      var fb = FEEDBACK[d.key];
+      var text = fb[s.tone] || fb.none || '';
+      if (!text) return;
+
+      var iconCls = 'bb-dimension__icon';
+      if (s.value >= 75) iconCls += ' bb-dimension__icon--high';
+      else if (s.value >= 50) iconCls += ' bb-dimension__icon--med';
+      else iconCls += ' bb-dimension__icon--low';
+
+      var dim = el('div', { class: 'bb-dimension', style: 'animation-delay: ' + (i * 80) + 'ms' }, [
+        el('div', { class: iconCls }, [d.icon]),
+        el('div', { class: 'bb-dimension__text' }, [
+          el('div', { class: 'bb-dimension__name' }, [d.label + ' — ' + s.value + '%']),
+          el('span', null, [text])
+        ])
+      ]);
+      feedbackWrap.appendChild(dim);
+    });
+    card.appendChild(feedbackWrap);
+
+    // CTAs
+    ctasToShow.forEach(function (cta) {
+      card.appendChild(el('a', {
+        class: 'bb-result__cta' + (cta.primary ? '' : ' bb-result__cta--ghost'),
+        href: cta.href, target: '_blank', rel: 'noopener'
+      }, [cta.label]));
+    });
+
+    // Share section
+    var share = el('div', { class: 'bb-share' });
+    share.appendChild(el('div', { class: 'bb-share__title' }, ['Deel je resultaat']));
+    var previewWrap = el('div', { class: 'bb-share__preview' });
+    share.appendChild(previewWrap);
+
+    var dlBtn = el('button', {
+      class: 'bb-share__btn', type: 'button',
+      onclick: function () { downloadShareCard(scores, key); }
+    }, ['Download afbeelding']);
+    var linkedinBtn = el('button', {
+      class: 'bb-share__btn bb-share__btn--ghost', type: 'button',
+      onclick: function () {
+        window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent('https://www.acupofambition.nl/beslisboom'), '_blank');
+      }
+    }, ['Deel op LinkedIn']);
+    share.appendChild(dlBtn);
+    share.appendChild(linkedinBtn);
+    card.appendChild(share);
+
+    // Generate share card preview
+    generateShareCard(state.userName, scores, key, function (canvas) {
+      var previewCanvas = document.createElement('canvas');
+      previewCanvas.width = canvas.width;
+      previewCanvas.height = canvas.height;
+      previewCanvas.getContext('2d').drawImage(canvas, 0, 0);
+      previewWrap.appendChild(previewCanvas);
+      state.shareCanvas = canvas;
+    });
+
+    card.appendChild(el('button', {
+      class: 'bb-restart', type: 'button', onclick: restart
+    }, ['Opnieuw beginnen']));
+  }
+
+  function downloadShareCard(scores, outcomeKey) {
+    if (state.shareCanvas) {
+      doDownload(state.shareCanvas);
+    } else {
+      generateShareCard(state.userName, scores, outcomeKey, doDownload);
+    }
+  }
+
+  function doDownload(canvas) {
+    var link = document.createElement('a');
+    link.download = 'mijn-speaker-readiness-score.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  // ====================================================================
+  // Actions
+  // ====================================================================
+  function choose(answer) {
+    state.history.push({ nodeId: state.currentNodeId, answerLabel: answer.label });
+    if (typeof answer.next === 'string' && answer.next.indexOf('result:') === 0) {
+      state.pendingResult = answer.next.split(':')[1];
+    } else {
+      state.currentNodeId = answer.next;
+    }
+    render();
+  }
+
+  function goBack() {
+    var last = state.history.pop();
+    if (!last) return;
+    state.currentNodeId = last.nodeId;
+    state.pendingResult = null;
+    render();
+  }
+
+  function restart() {
+    state.started = false;
+    state.history = [];
+    state.currentNodeId = TREE.start;
+    state.pendingResult = null;
+    state.finalResult = null;
+    state.analyzing = false;
+    state.aiText = null;
+    state.shareCanvas = null;
+    state.userName = '';
+    render();
+  }
+
+  function submitEmail(form) {
+    var btn = form.querySelector('.bb-submit');
+    var err = form.querySelector('#bb-error');
+    err.textContent = '';
+
+    var nameVal  = (form.querySelector('#bb-name')  || {}).value || '';
+    var emailVal = (form.querySelector('#bb-email') || {}).value || '';
+    var newsletterChecked = !!(form.querySelector('#bb-consent') && form.querySelector('#bb-consent').checked);
+    var outcomeTag = RESULT_DEFS[state.pendingResult].tag;
+
+    if (!nameVal.trim() || !emailVal.trim()) {
+      err.textContent = 'Vul je naam en e-mailadres in.';
+      return;
+    }
+
+    state.userName = nameVal.trim();
+    btn.disabled = true;
+    btn.textContent = 'Bezig...';
+
+    var data = new FormData();
+    Object.keys(AC_FORM).forEach(function (k) { data.append(k, AC_FORM[k]); });
+    data.append('fullname', nameVal.trim());
+    data.append('email', emailVal.trim());
+    data.append(AC_OUTCOME_FIELD, outcomeTag);
+
+    var tags = ['beslisboom-lead', 'beslisboom-v2', outcomeTag];
+    if (newsletterChecked) tags.push('nieuwsbrief');
+    data.append('tags', tags.join(','));
+    data.append('newsletter_optin', newsletterChecked ? 'yes' : 'no');
+
+    fetch(AC_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: data
+    }).then(function () {
+      state.analyzing = true;
+      render();
+      startAnalyzingSequence();
+    }).catch(function (e) {
+      console.error('[beslisboom-v2] AC submit failed', e);
+      btn.disabled = false;
+      btn.textContent = 'Toon mijn persoonlijke analyse';
+      err.textContent = 'Er ging iets mis. Probeer het nog eens of mail info@acupofambition.nl.';
+    });
+  }
+
+  // ====================================================================
+  // Confetti
+  // ====================================================================
+  function fireConfetti() {
+    var canvas = document.createElement('canvas');
+    canvas.className = 'bb-confetti';
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width  = window.innerWidth  * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+      canvas.style.width  = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    resize();
+
+    var colors = ['#5c1f1a', '#c8923b', '#b89691', '#f5e8e4', '#3f120e'];
+    var pieces = [];
+    var w = window.innerWidth, h = window.innerHeight;
+    for (var i = 0; i < 140; i++) {
+      pieces.push({
+        x: w / 2 + (Math.random() - 0.5) * 100,
+        y: h / 3,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 14 - 4,
+        g: 0.35 + Math.random() * 0.15,
+        size: 6 + Math.random() * 8,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        shape: Math.random() < 0.5 ? 'rect' : 'circ'
+      });
+    }
+
+    var start = performance.now();
+    var DURATION = 2600;
+    function frame(t) {
+      var elapsed = t - start;
+      ctx.clearRect(0, 0, w, h);
+      pieces.forEach(function (p) {
+        p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, 1 - elapsed / DURATION);
+        if (p.shape === 'rect') ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.5);
+        else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2); ctx.fill(); }
+        ctx.restore();
+      });
+      if (elapsed < DURATION) requestAnimationFrame(frame);
+      else canvas.remove();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  render();
+})();
+</script>

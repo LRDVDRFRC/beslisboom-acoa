@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/personalize", "destination": "/api/personalize.js" }
+  ]
+}
