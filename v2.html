@@ -1308,16 +1308,7 @@
           var dim = node.dimension;
           var micro = dim && MICRO[dim] && MICRO[dim][a.tone];
 
-          if (micro) {
-            // Brief pause, then show feedback, then transition
-            setTimeout(function () {
-              showMicroFeedback(card, micro, function () {
-                choose(a);
-              });
-            }, 200);
-          } else {
-            setTimeout(function () { choose(a); }, 200);
-          }
+          setTimeout(function () { choose(a); }, 200);
         }
       }, [a.label]));
     });
