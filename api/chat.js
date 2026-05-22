@@ -7,20 +7,40 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { mode, messages, nextDimension, name } = req.body;
+    const { mode, messages, currentDimension, coveredDimensions, name } = req.body;
 
     if (mode === 'respond') {
+      const allDimensions = [
+        { key: 'verhaal', desc: 'haar verhaal, inzichten en ervaringen die waardevol zijn voor publiek' },
+        { key: 'markt', desc: 'of er vraag is naar haar onderwerp vanuit bedrijven, events of organisaties' },
+        { key: 'keynote', desc: 'of ze een keynote of presentatie heeft uitgewerkt met opbouw en kernboodschap' },
+        { key: 'podium', desc: 'of ze met plezier en zelfvertrouwen op het podium kan staan' },
+        { key: 'ervaring', desc: 'of ze podiumervaring heeft en bewijs van waarde (testimonials, video, betaalde optredens)' },
+        { key: 'zichtbaarheid', desc: 'of ze zichtbaar en vindbaar is als spreker en bereid is daarin te investeren' },
+      ];
+
+      const covered = coveredDimensions || [];
+      const remaining = allDimensions.filter(d => !covered.includes(d.key));
+      const current = allDimensions.find(d => d.key === currentDimension);
+      const nextUncovered = remaining.find(d => d.key !== currentDimension);
+
       const systemPrompt = `Je bent Britt van A Cup of Ambition — een Nederlands bedrijf dat vrouwen helpt om betaald spreker te worden. Je voert een warm, persoonlijk gesprek.
 
-Je taak: reageer kort en warm op het antwoord van de gebruiker (max 2 zinnen), en stel dan een nieuwe vraag over het volgende onderwerp: "${nextDimension}".
+Het huidige onderwerp is: "${current ? current.desc : currentDimension}".
+${nextUncovered ? `Het volgende onderwerp na dit is: "${nextUncovered.desc}".` : 'Dit is het laatste onderwerp.'}
+Reeds besproken: ${covered.length > 0 ? covered.join(', ') : 'nog niets'}.
+
+BELANGRIJK — Beoordeel eerst het antwoord van de gebruiker:
+A) Als ze een inhoudelijk antwoord gaf over "${currentDimension}" (ook al is het kort of onzeker) → reageer warm, en stel dan een vraag over het VOLGENDE onderwerp. Eindig je antwoord met de tag [COVERED]
+B) Als ze verward is, om uitleg vraagt, "huh" zegt, of NIET inhoudelijk antwoordde → leg het onderwerp "${currentDimension}" uit op een toegankelijke manier en stel de vraag opnieuw. Eindig ZONDER [COVERED]
 
 Regels:
 - Gebruik je/jij, schrijf in het Nederlands
-- Wees bemoedigend maar oprecht
-- Reageer specifiek op wat ze zei (niet generiek)
-- Sluit af met een open vraag over het volgende onderwerp
-- Max 60 woorden totaal
-- Geen markdown-opmaak (geen #, **, __ etc). Schrijf platte tekst.`;
+- Wees bemoedigend en warm
+- Reageer specifiek op wat ze zei
+- Max 80 woorden (exclusief de tag)
+- Geen markdown-opmaak (geen #, **, __ etc)
+- De [COVERED] tag moet ALTIJD op een eigen regel helemaal aan het eind staan, OF helemaal weggelaten worden`;
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -31,7 +51,7 @@ Regels:
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 200,
+          max_tokens: 250,
           system: systemPrompt,
           messages: messages,
         }),
@@ -39,11 +59,17 @@ Regels:
 
       if (!response.ok) {
         console.error('Anthropic API error:', await response.text());
-        return res.status(200).json({ reply: null });
+        return res.status(200).json({ reply: null, covered: false });
       }
 
       const data = await response.json();
-      return res.status(200).json({ reply: data.content?.[0]?.text || null });
+      let text = data.content?.[0]?.text || '';
+
+      // Parse [COVERED] tag
+      const isCovered = text.includes('[COVERED]');
+      text = text.replace(/\[COVERED\]/g, '').trim();
+
+      return res.status(200).json({ reply: text || null, covered: isCovered });
     }
 
     if (mode === 'score') {

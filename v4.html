@@ -349,18 +349,12 @@
 
   var DIMENSIONS = [
     { key: 'verhaal', label: 'Verhaal', icon: '\u{1F4D6}',
-      question: 'Laten we beginnen! Wat is jouw verhaal? Welke inzichten of ervaringen heb jij die waardevol zijn voor een publiek?',
-      prompt: 'haar verhaal en inzichten of ervaringen die waardevol zijn voor publiek' },
-    { key: 'markt', label: 'Marktvraag', icon: '\u{1F3AF}',
-      prompt: 'of er vraag is naar haar onderwerp vanuit bedrijven, events of organisaties' },
-    { key: 'keynote', label: 'Keynote', icon: '\u{1F3A4}',
-      prompt: 'of ze al een keynote of presentatie heeft uitgewerkt met een duidelijke opbouw en kernboodschap' },
-    { key: 'podium', label: 'Podiumkracht', icon: '⚡',
-      prompt: 'of ze met plezier en zelfvertrouwen op een podium kan staan' },
-    { key: 'ervaring', label: 'Ervaring', icon: '\u{1F3C6}',
-      prompt: 'of ze al ervaring heeft op het podium, zoals testimonials of eerdere optredens' },
-    { key: 'zichtbaarheid', label: 'Zichtbaarheid', icon: '\u{1F50D}',
-      prompt: 'of ze zichtbaar en vindbaar is als spreker en bereid is daarin te investeren' }
+      question: 'Laten we beginnen! Wat is jouw verhaal? Welke inzichten of ervaringen heb jij die waardevol zijn voor een publiek?' },
+    { key: 'markt', label: 'Marktvraag', icon: '\u{1F3AF}' },
+    { key: 'keynote', label: 'Keynote', icon: '\u{1F3A4}' },
+    { key: 'podium', label: 'Podiumkracht', icon: '⚡' },
+    { key: 'ervaring', label: 'Ervaring', icon: '\u{1F3C6}' },
+    { key: 'zichtbaarheid', label: 'Zichtbaarheid', icon: '\u{1F50D}' }
   ];
 
   var FEEDBACK = {
@@ -392,7 +386,8 @@
   var root = document.getElementById('chat-root');
   var messagesEl, actionsEl, inputBarEl;
   var state = {
-    questionIndex: 0,
+    coveredDimensions: [],   // keys of dimensions the AI confirmed as answered
+    currentDimIndex: 0,      // which dimension we're currently asking about
     conversationMessages: [],
     userName: '',
     aiScores: null,
@@ -477,8 +472,11 @@
     var dots = document.querySelectorAll('.ch-progress__dot');
     dots.forEach(function (dot, i) {
       dot.className = 'ch-progress__dot';
-      if (i < state.questionIndex) dot.className += ' ch-progress__dot--done';
-      else if (i === state.questionIndex) dot.className += ' ch-progress__dot--active';
+      if (state.coveredDimensions.indexOf(DIMENSIONS[i].key) !== -1) {
+        dot.className += ' ch-progress__dot--done';
+      } else if (i === state.currentDimIndex) {
+        dot.className += ' ch-progress__dot--active';
+      }
     });
   }
 
@@ -525,7 +523,8 @@
   }
 
   function askFirstQuestion() {
-    state.questionIndex = 0;
+    state.currentDimIndex = 0;
+    state.coveredDimensions = [];
     var dim = DIMENSIONS[0];
 
     queueBotMsg('<strong>' + dim.question + '</strong>');
@@ -588,16 +587,8 @@
     document.getElementById('ch-send').disabled = true;
 
     state.conversationMessages.push({ role: 'user', content: text });
-    state.questionIndex++;
-    updateProgress();
 
-    if (state.questionIndex >= 6) {
-      hideInputBar();
-      setTimeout(function () { askForEmail(); }, 500);
-      return;
-    }
-
-    var nextDim = DIMENSIONS[state.questionIndex];
+    var currentDim = DIMENSIONS[state.currentDimIndex];
     var typing = showTyping();
 
     fetch(CHAT_ENDPOINT, {
@@ -606,34 +597,55 @@
       body: JSON.stringify({
         mode: 'respond',
         messages: state.conversationMessages,
-        nextDimension: nextDim.prompt || nextDim.label
+        currentDimension: currentDim.key,
+        coveredDimensions: state.coveredDimensions
       })
     })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       hideTyping();
       var reply = d.reply;
+      var covered = d.covered;
+
       if (!reply) {
-        reply = 'Dank je voor het delen! ' + (nextDim.question || 'Vertel me meer over ' + nextDim.label.toLowerCase() + '.');
+        // API failed — use simple fallback but DON'T advance
+        reply = 'Kun je daar iets meer over vertellen? Ik ben benieuwd naar jouw ervaring met ' + currentDim.label.toLowerCase() + '.';
+        covered = false;
       }
+
       addBotMsg(reply);
       state.conversationMessages.push({ role: 'assistant', content: reply });
-      state.busy = false;
-      var ta2 = document.getElementById('ch-textarea');
-      ta2.disabled = false;
-      document.getElementById('ch-send').disabled = false;
-      ta2.focus();
+
+      if (covered) {
+        // Dimension was answered — advance
+        state.coveredDimensions.push(currentDim.key);
+        state.currentDimIndex++;
+      }
+      // If not covered, stay on same dimension (user can clarify)
+
+      updateProgress();
+
+      // Check if all 6 dimensions are covered
+      if (state.coveredDimensions.length >= 6) {
+        hideInputBar();
+        setTimeout(function () { askForEmail(); }, 500);
+      } else {
+        state.busy = false;
+        ta.disabled = false;
+        document.getElementById('ch-send').disabled = false;
+        ta.focus();
+      }
     })
     .catch(function () {
       hideTyping();
-      var fallback = 'Mooi! Vertel eens, hoe zit het met ' + nextDim.label.toLowerCase() + '?';
+      // Network error — stay on current dimension
+      var fallback = 'Hmm, ik had even een storing. Kun je iets meer vertellen over ' + currentDim.label.toLowerCase() + '?';
       addBotMsg(fallback);
       state.conversationMessages.push({ role: 'assistant', content: fallback });
       state.busy = false;
-      var ta2 = document.getElementById('ch-textarea');
-      ta2.disabled = false;
+      ta.disabled = false;
       document.getElementById('ch-send').disabled = false;
-      ta2.focus();
+      ta.focus();
     });
   }
 
